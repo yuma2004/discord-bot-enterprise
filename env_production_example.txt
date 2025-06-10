@@ -1,0 +1,31 @@
+# 本番環境用 Discord Bot 設定
+# ===================================
+
+# Discord Bot 設定
+DISCORD_TOKEN=your_production_discord_token_here
+DISCORD_GUILD_ID=your_guild_id_here
+
+# Supabase (PostgreSQL) 設定
+DATABASE_URL=postgresql://user:password@host:port/database
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your_supabase_anon_key_here
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key_here
+
+# Google Calendar API 設定（オプション）
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+GOOGLE_CALENDAR_ID=your_calendar_id
+
+# アプリケーション設定
+ENVIRONMENT=production
+DEBUG=false
+TIMEZONE=Asia/Tokyo
+DAILY_REPORT_TIME=17:00
+
+# ログ設定
+LOG_LEVEL=INFO
+LOG_FORMAT=json
+
+# その他の設定
+ADMIN_USER_IDS=123456789012345678,987654321098765432
+DEFAULT_LANGUAGE=ja 
