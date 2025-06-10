@@ -1,3 +1,5 @@
+# 日報機能を一時的にコメントアウト
+"""
 import discord
 from discord.ext import commands
 from datetime import datetime, date
@@ -271,4 +273,5 @@ class DailyReportCog(commands.Cog):
 
 async def setup(bot):
     """Cogをbotに追加"""
-    await bot.add_cog(DailyReportCog(bot)) 
+    await bot.add_cog(DailyReportCog(bot))
+""" 

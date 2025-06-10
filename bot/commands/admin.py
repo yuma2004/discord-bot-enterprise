@@ -160,58 +160,59 @@ class AdminCog(commands.Cog):
             logger.error(f"ユーザー一覧取得エラー: {e}")
             await ctx.send("ユーザー一覧の取得中にエラーが発生しました。")
     
-    @admin_group.command(name='report', aliases=['日報'])
-    async def show_report_stats(self, ctx, days: int = 7):
-        """日報提出率レポート"""
-        try:
-            report_stats = await self._get_report_statistics(days)
-            
-            embed = discord.Embed(
-                title=f"📝 日報提出率レポート（過去{days}日間）",
-                color=discord.Color.green(),
-                timestamp=datetime.now()
-            )
-            
-            # 日別提出率
-            daily_rates = []
-            for day_stat in report_stats['daily_stats']:
-                date_str = day_stat['date']
-                rate = day_stat['submission_rate']
-                rate_emoji = "🟢" if rate >= 80 else "🟡" if rate >= 60 else "🔴"
-                daily_rates.append(f"{date_str}: {rate_emoji} {rate:.1f}%")
-            
-            embed.add_field(
-                name="日別提出率",
-                value='\n'.join(daily_rates[-7:]),  # 最新7日分
-                inline=False
-            )
-            
-            # 全体統計
-            embed.add_field(
-                name="期間統計",
-                value=f"平均提出率: {report_stats['average_rate']:.1f}%\n"
-                      f"最高提出率: {report_stats['max_rate']:.1f}%\n"
-                      f"最低提出率: {report_stats['min_rate']:.1f}%",
-                inline=True
-            )
-            
-            # 未提出が多いユーザー
-            if report_stats['low_submission_users']:
-                user_list = []
-                for user_stat in report_stats['low_submission_users'][:5]:
-                    user_list.append(f"{user_stat['username']}: {user_stat['submission_rate']:.1f}%")
-                
-                embed.add_field(
-                    name="提出率が低いユーザー（TOP5）",
-                    value='\n'.join(user_list),
-                    inline=True
-                )
-            
-            await ctx.send(embed=embed)
-            
-        except Exception as e:
-            logger.error(f"日報統計取得エラー: {e}")
-            await ctx.send("日報統計の取得中にエラーが発生しました。")
+    # 日報関連コマンドを一時的にコメントアウト
+    # @admin_group.command(name='report', aliases=['日報'])
+    # async def show_report_stats(self, ctx, days: int = 7):
+    #     """日報提出率レポート"""
+    #     try:
+    #         report_stats = await self._get_report_statistics(days)
+    #         
+    #         embed = discord.Embed(
+    #             title=f"📝 日報提出率レポート（過去{days}日間）",
+    #             color=discord.Color.green(),
+    #             timestamp=datetime.now()
+    #         )
+    #         
+    #         # 日別提出率
+    #         daily_rates = []
+    #         for day_stat in report_stats['daily_stats']:
+    #             date_str = day_stat['date']
+    #             rate = day_stat['submission_rate']
+    #             rate_emoji = "🟢" if rate >= 80 else "🟡" if rate >= 60 else "🔴"
+    #             daily_rates.append(f"{date_str}: {rate_emoji} {rate:.1f}%")
+    #         
+    #         embed.add_field(
+    #             name="日別提出率",
+    #             value='\n'.join(daily_rates[-7:]),  # 最新7日分
+    #             inline=False
+    #         )
+    #         
+    #         # 全体統計
+    #         embed.add_field(
+    #             name="期間統計",
+    #             value=f"平均提出率: {report_stats['average_rate']:.1f}%\n"
+    #                   f"最高提出率: {report_stats['max_rate']:.1f}%\n"
+    #                   f"最低提出率: {report_stats['min_rate']:.1f}%",
+    #             inline=True
+    #         )
+    #         
+    #         # 未提出が多いユーザー
+    #         if report_stats['low_submission_users']:
+    #             user_list = []
+    #             for user_stat in report_stats['low_submission_users'][:5]:
+    #                 user_list.append(f"{user_stat['username']}: {user_stat['submission_rate']:.1f}%")
+    #             
+    #             embed.add_field(
+    #                 name="提出率が低いユーザー（TOP5）",
+    #                 value='\n'.join(user_list),
+    #                 inline=True
+    #             )
+    #         
+    #         await ctx.send(embed=embed)
+    #         
+    #     except Exception as e:
+    #         logger.error(f"日報統計取得エラー: {e}")
+    #         await ctx.send("日報統計の取得中にエラーが発生しました。")
     
     @admin_group.command(name='tasks', aliases=['タスク'])
     async def show_task_stats(self, ctx):
@@ -420,26 +421,27 @@ class AdminCog(commands.Cog):
                 cursor.execute('SELECT COUNT(*) FROM users')
                 stats['total_users'] = cursor.fetchone()[0]
                 
-                # 今日の利用者数（今日日報を提出したユーザー数）
+                # 日報関連統計を一時的にコメントアウト
                 today = date.today().isoformat()
-                cursor.execute('SELECT COUNT(DISTINCT user_id) FROM daily_reports WHERE report_date = ?', (today,))
-                stats['daily_active_users'] = cursor.fetchone()[0]
+                # cursor.execute('SELECT COUNT(DISTINCT user_id) FROM daily_reports WHERE report_date = ?', (today,))
+                # stats['daily_active_users'] = cursor.fetchone()[0]
+                stats['daily_active_users'] = 0  # 一時的に0に設定
                 
-                # 日報提出率
-                cursor.execute('SELECT COUNT(*) FROM daily_reports WHERE report_date = ?', (today,))
-                today_reports = cursor.fetchone()[0]
-                stats['daily_report_rate'] = (today_reports / max(stats['total_users'], 1)) * 100
+                # cursor.execute('SELECT COUNT(*) FROM daily_reports WHERE report_date = ?', (today,))
+                # today_reports = cursor.fetchone()[0]
+                # stats['daily_report_rate'] = (today_reports / max(stats['total_users'], 1)) * 100
+                stats['daily_report_rate'] = 0  # 一時的に0に設定
                 
-                # 月次日報提出率（簡易計算）
-                first_day_of_month = date.today().replace(day=1).isoformat()
-                cursor.execute('''
-                    SELECT COUNT(*) FROM daily_reports 
-                    WHERE report_date >= ?
-                ''', (first_day_of_month,))
-                monthly_reports = cursor.fetchone()[0]
-                days_in_month = (date.today() - date.today().replace(day=1)).days + 1
-                expected_reports = stats['total_users'] * days_in_month
-                stats['monthly_report_rate'] = (monthly_reports / max(expected_reports, 1)) * 100
+                # first_day_of_month = date.today().replace(day=1).isoformat()
+                # cursor.execute('''
+                #     SELECT COUNT(*) FROM daily_reports 
+                #     WHERE report_date >= ?
+                # ''', (first_day_of_month,))
+                # monthly_reports = cursor.fetchone()[0]
+                # days_in_month = (date.today() - date.today().replace(day=1)).days + 1
+                # expected_reports = stats['total_users'] * days_in_month
+                # stats['monthly_report_rate'] = (monthly_reports / max(expected_reports, 1)) * 100
+                stats['monthly_report_rate'] = 0  # 一時的に0に設定
                 
                 # タスク統計
                 cursor.execute('SELECT COUNT(*) FROM tasks')
@@ -470,16 +472,17 @@ class AdminCog(commands.Cog):
         
         return stats
     
-    async def _get_report_statistics(self, days: int) -> Dict[str, Any]:
-        """日報統計を取得"""
-        # 実装を簡略化（実際にはより詳細な統計を計算）
-        return {
-            'daily_stats': [],
-            'average_rate': 75.0,
-            'max_rate': 100.0,
-            'min_rate': 50.0,
-            'low_submission_users': []
-        }
+    # 日報統計関数を一時的にコメントアウト
+    # async def _get_report_statistics(self, days: int) -> Dict[str, Any]:
+    #     """日報統計を取得"""
+    #     # 実装を簡略化（実際にはより詳細な統計を計算）
+    #     return {
+    #         'daily_stats': [],
+    #         'average_rate': 75.0,
+    #         'max_rate': 100.0,
+    #         'min_rate': 50.0,
+    #         'low_submission_users': []
+    #     }
     
     async def _get_task_statistics(self) -> Dict[str, Any]:
         """タスク統計を取得"""

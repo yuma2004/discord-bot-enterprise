@@ -1,3 +1,5 @@
+# リマインド機能を一時的にコメントアウト（日報関連のため）
+"""
 import asyncio
 import logging
 from datetime import datetime, time, date
@@ -313,4 +315,5 @@ class ReminderCog(commands.Cog):
 
 async def setup(bot):
     """Cogをbotに追加"""
-    await bot.add_cog(ReminderCog(bot)) 
+    await bot.add_cog(ReminderCog(bot))
+""" 

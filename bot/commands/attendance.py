@@ -3,6 +3,8 @@ from discord.ext import commands
 from datetime import datetime, date
 import logging
 import os
+import csv
+import io
 if os.getenv('DATABASE_URL') and 'postgres' in os.getenv('DATABASE_URL'):
     from database_postgres import user_repo, attendance_repo
 else:
@@ -247,59 +249,54 @@ class AttendanceCog(commands.Cog):
         self.bot = bot
         self.attendance_channel_id = None  # 出退勤チャンネルのID
         self.last_panel_message = None    # 最後のパネルメッセージ
+        # 永続的なViewを追加
+        bot.add_view(AttendanceView())
     
     @commands.command(name='出退勤', aliases=['attendance', 'punch'])
     async def attendance_panel(self, ctx):
-        """出退勤管理パネルを表示（常に最新メッセージとして表示）"""
-        # 出退勤チャンネルかどうかチェック
-        if ctx.channel.name == '出退勤':
-            # Botの古いメッセージを削除（最新10件をチェック）
-            async for message in ctx.channel.history(limit=10):
-                if message.author == self.bot.user and message.embeds:
-                    try:
-                        embed = message.embeds[0]
-                        if embed.title and "出退勤管理システム" in embed.title:
-                            await message.delete()
-                            logger.info("古い出退勤パネルを削除しました")
-                    except discord.errors.NotFound:
-                        pass  # メッセージが既に削除されている
-                    except Exception as e:
-                        logger.warning(f"メッセージ削除エラー: {e}")
-        
+        """出退勤管理パネルを表示"""
         embed = discord.Embed(
-            title="🕐 出退勤管理システム",
-            description="下のボタンを使って出退勤を記録してください",
-            color=discord.Color.blue(),
-            timestamp=datetime.now()
+            title="🏢 出退勤管理システム",
+            description="以下のボタンで出退勤を記録してください",
+            color=discord.Color.blue()
         )
         
         embed.add_field(
-            name="📋 使用方法",
-            value="🟢 **出勤**: 出勤時に押してください\n"
-                  "🔴 **退勤**: 退勤時に押してください\n"
-                  "🟡 **休憩開始**: 休憩に入る時に押してください\n"
-                  "🟢 **休憩終了**: 休憩から戻った時に押してください",
-            inline=False
+            name="🟢 出勤",
+            value="勤務開始時にクリック",
+            inline=True
+        )
+        embed.add_field(
+            name="🔴 退勤", 
+            value="勤務終了時にクリック",
+            inline=True
+        )
+        embed.add_field(
+            name="🟡 休憩",
+            value="休憩の開始・終了時にクリック",
+            inline=True
         )
         
         embed.add_field(
-            name="ℹ️ 注意事項",
-            value="・記録は個人にのみ表示されます\n"
-                  "・勤務時間は自動計算されます\n"
-                  "・8時間を超えた分は残業時間として記録されます",
+            name="📊 勤怠確認",
+            value="`!勤怠確認` コマンドで個人の勤怠を確認",
+            inline=False
+        )
+        embed.add_field(
+            name="📈 月次勤怠",
+            value="`!月次勤怠` コマンドで月次レポートを確認",
+            inline=False
+        )
+        embed.add_field(
+            name="📋 CSV出力",
+            value="`!勤怠CSV` コマンドで勤怠データをCSVでダウンロード",
             inline=False
         )
         
-        embed.set_footer(text="📌 このパネルは常に最新の状態で表示されます")
+        embed.set_footer(text="企業用Discord Bot - 出退勤管理")
         
         view = AttendanceView()
-        message = await ctx.send(embed=embed, view=view)
-        
-        # 出退勤チャンネルの場合は情報を保存
-        if ctx.channel.name == '出退勤':
-            self.attendance_channel_id = ctx.channel.id
-            self.last_panel_message = message
-            logger.info(f"出退勤パネルを更新しました: {message.id}")
+        await ctx.send(embed=embed, view=view)
     
     @commands.command(name='勤怠確認', aliases=['attendance_status', 'status'])
     async def check_attendance(self, ctx, target_date: str = None):
@@ -536,6 +533,232 @@ class AttendanceCog(commands.Cog):
                     )
         
         embed.set_footer(text=f"ユーザー: {ctx.author.display_name}")
+        await ctx.send(embed=embed)
+
+    @commands.command(name='勤怠CSV', aliases=['attendance_csv', 'export_csv'])
+    async def export_attendance_csv(self, ctx, start_date: str = None, end_date: str = None, user_mention: discord.Member = None):
+        """
+        勤怠データをCSV形式でエクスポート
+        
+        使用例:
+        !勤怠CSV - 今月の全員分
+        !勤怠CSV 2024-01-01 2024-01-31 - 指定期間の全員分
+        !勤怠CSV 2024-01-01 2024-01-31 @ユーザー - 指定期間の特定ユーザー分
+        """
+        await ctx.defer()
+        
+        try:
+            # デフォルトは今月
+            if not start_date or not end_date:
+                now = datetime.now()
+                start_date = f"{now.year}-{now.month:02d}-01"
+                # 今月末日を計算
+                if now.month == 12:
+                    next_month = datetime(now.year + 1, 1, 1)
+                else:
+                    next_month = datetime(now.year, now.month + 1, 1)
+                import calendar
+                last_day = calendar.monthrange(now.year, now.month)[1]
+                end_date = f"{now.year}-{now.month:02d}-{last_day:02d}"
+            
+            # 日付の妥当性チェック
+            try:
+                start_dt = datetime.strptime(start_date, '%Y-%m-%d').date()
+                end_dt = datetime.strptime(end_date, '%Y-%m-%d').date()
+            except ValueError:
+                embed = discord.Embed(
+                    title="❌ 日付形式エラー",
+                    description="日付は YYYY-MM-DD 形式で入力してください",
+                    color=discord.Color.red()
+                )
+                await ctx.followup.send(embed=embed)
+                return
+            
+            if start_dt > end_dt:
+                embed = discord.Embed(
+                    title="❌ 日付範囲エラー",
+                    description="開始日は終了日より前の日付を指定してください",
+                    color=discord.Color.red()
+                )
+                await ctx.followup.send(embed=embed)
+                return
+            
+            # 特定ユーザー指定の場合
+            target_user_id = None
+            if user_mention:
+                target_user = user_repo.get_or_create_user(
+                    str(user_mention.id),
+                    user_mention.name,
+                    user_mention.display_name
+                )
+                target_user_id = target_user['id']
+            
+            # 勤怠データを取得
+            attendance_data = attendance_repo.get_attendance_range(
+                start_date, end_date, target_user_id
+            )
+            
+            if not attendance_data:
+                embed = discord.Embed(
+                    title="📄 データなし",
+                    description="指定された条件の勤怠データが見つかりませんでした",
+                    color=discord.Color.orange()
+                )
+                await ctx.followup.send(embed=embed)
+                return
+            
+            # CSVファイルを作成
+            csv_buffer = io.StringIO()
+            csv_writer = csv.writer(csv_buffer)
+            
+            # ヘッダー行
+            csv_writer.writerow([
+                '日付', 'ユーザー名', '表示名', '出勤時刻', '退勤時刻',
+                '休憩開始', '休憩終了', '総休憩時間（分）', '総勤務時間（時間）',
+                '残業時間（時間）', 'ステータス', '備考'
+            ])
+            
+            # データ行
+            for record in attendance_data:
+                # 時刻のフォーマット
+                def format_time(time_str):
+                    if not time_str:
+                        return ''
+                    try:
+                        if isinstance(time_str, str):
+                            dt = datetime.fromisoformat(time_str)
+                        else:
+                            dt = time_str
+                        return dt.strftime('%H:%M')
+                    except (ValueError, TypeError):
+                        return str(time_str) if time_str else ''
+                
+                csv_writer.writerow([
+                    record.get('date', ''),
+                    record.get('username', ''),
+                    record.get('display_name', ''),
+                    format_time(record.get('clock_in_time')),
+                    format_time(record.get('clock_out_time')),
+                    format_time(record.get('break_start_time')),
+                    format_time(record.get('break_end_time')),
+                    record.get('total_break_minutes', 0),
+                    f"{record.get('total_work_hours', 0):.1f}",
+                    f"{record.get('overtime_hours', 0):.1f}",
+                    record.get('status', ''),
+                    record.get('notes', '')
+                ])
+            
+            # CSVファイルをDiscordファイルとして送信
+            csv_buffer.seek(0)
+            csv_bytes = io.BytesIO(csv_buffer.getvalue().encode('utf-8-sig'))  # BOM付きUTF-8
+            
+            # ファイル名を生成
+            user_suffix = f"_{user_mention.display_name}" if user_mention else "_全員"
+            filename = f"勤怠記録_{start_date}_to_{end_date}{user_suffix}.csv"
+            
+            file = discord.File(csv_bytes, filename=filename)
+            
+            # 結果をEmbed
+            embed = discord.Embed(
+                title="📊 勤怠データCSVエクスポート完了",
+                description=f"勤怠データをCSVファイルで出力しました",
+                color=discord.Color.green(),
+                timestamp=datetime.now()
+            )
+            
+            embed.add_field(
+                name="📅 対象期間",
+                value=f"{start_date} ～ {end_date}",
+                inline=True
+            )
+            
+            if user_mention:
+                embed.add_field(
+                    name="👤 対象ユーザー",
+                    value=user_mention.display_name,
+                    inline=True
+                )
+            else:
+                embed.add_field(
+                    name="👥 対象ユーザー",
+                    value="全員",
+                    inline=True
+                )
+            
+            embed.add_field(
+                name="📋 レコード数",
+                value=f"{len(attendance_data)}件",
+                inline=True
+            )
+            
+            embed.add_field(
+                name="💾 ファイル形式",
+                value="CSV (UTF-8 BOM付き)",
+                inline=False
+            )
+            
+            embed.add_field(
+                name="📝 使用方法",
+                value="• Excel で開く場合：そのまま開けます\n• Googleスプレッドシート：インポート機能を使用",
+                inline=False
+            )
+            
+            embed.set_footer(text=f"出力者: {ctx.author.display_name}")
+            
+            await ctx.followup.send(embed=embed, file=file)
+            
+            logger.info(f"勤怠CSVエクスポート完了: {ctx.author.name}, 期間: {start_date}-{end_date}, レコード数: {len(attendance_data)}")
+            
+        except Exception as e:
+            logger.error(f"勤怠CSVエクスポートエラー: {e}")
+            embed = discord.Embed(
+                title="❌ エラー",
+                description="CSVエクスポート中にエラーが発生しました",
+                color=discord.Color.red()
+            )
+            await ctx.followup.send(embed=embed)
+
+    @commands.command(name='勤怠CSV使い方', aliases=['csv_help'])
+    async def csv_help(self, ctx):
+        """勤怠CSVコマンドの使い方を説明"""
+        embed = discord.Embed(
+            title="📊 勤怠CSV出力 - 使い方ガイド",
+            description="勤怠データをCSV形式でエクスポートする方法を説明します",
+            color=discord.Color.blue()
+        )
+        
+        embed.add_field(
+            name="🔸 基本使用法",
+            value="`!勤怠CSV` - 今月の全員分を出力",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="🔸 期間指定",
+            value="`!勤怠CSV 2024-01-01 2024-01-31` - 指定期間の全員分",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="🔸 ユーザー指定",
+            value="`!勤怠CSV 2024-01-01 2024-01-31 @ユーザー名` - 特定ユーザーのみ",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="📋 CSVの項目",
+            value="• 日付\n• ユーザー名・表示名\n• 出勤・退勤時刻\n• 休憩時間\n• 総勤務時間\n• 残業時間\n• ステータス",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="💡 ヒント",
+            value="• CSV形式はUTF-8 BOM付きで出力されます\n• Excelで直接開くことができます\n• 管理者権限は不要です",
+            inline=False
+        )
+        
+        embed.set_footer(text="企業用Discord Bot - 勤怠管理")
+        
         await ctx.send(embed=embed)
 
 async def setup(bot):

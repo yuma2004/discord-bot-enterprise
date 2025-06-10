@@ -158,15 +158,17 @@ class UserRepository:
             conn.commit()
             return cursor.rowcount > 0
 
+# 日報関連のデータベース操作を一時的にコメントアウト
+"""
 class DailyReportRepository:
-    """日報関連のデータベース操作"""
+    \"\"\"日報関連のデータベース操作\"\"\"
     
     def __init__(self, db_manager: DatabaseManager):
         self.db_manager = db_manager
     
     def create_daily_report(self, user_id: int, report_date: str, today_tasks: str, 
                           tomorrow_tasks: str = "", obstacles: str = "", comments: str = "") -> int:
-        """日報を作成"""
+        \"\"\"日報を作成\"\"\"
         with self.db_manager.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('''
@@ -178,7 +180,7 @@ class DailyReportRepository:
             return cursor.lastrowid
     
     def get_daily_report(self, user_id: int, report_date: str) -> Optional[Dict[str, Any]]:
-        """指定日の日報を取得"""
+        \"\"\"指定日の日報を取得\"\"\"
         with self.db_manager.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('''
@@ -189,7 +191,7 @@ class DailyReportRepository:
             return dict(row) if row else None
     
     def get_users_without_report(self, report_date: str) -> List[Dict[str, Any]]:
-        """指定日に日報を提出していないユーザーを取得"""
+        \"\"\"指定日に日報を提出していないユーザーを取得\"\"\"
         with self.db_manager.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('''
@@ -198,6 +200,7 @@ class DailyReportRepository:
                 WHERE dr.id IS NULL
             ''', (report_date,))
             return [dict(row) for row in cursor.fetchall()]
+"""
 
 class TaskRepository:
     """タスク関連のデータベース操作"""
@@ -441,6 +444,56 @@ class AttendanceRepository:
                 LEFT JOIN attendance a ON u.id = a.user_id AND a.work_date = ?
             ''', (today,))
             return [dict(row) for row in cursor.fetchall()]
+    
+    def get_attendance_range(self, start_date: str, end_date: str, user_id: int = None) -> List[Dict[str, Any]]:
+        """指定期間の勤怠データを取得（CSV出力用）"""
+        with self.db_manager.get_connection() as conn:
+            cursor = conn.cursor()
+            
+            if user_id:
+                # 特定ユーザーのデータ
+                cursor.execute('''
+                    SELECT a.work_date as date, 
+                           u.username, u.display_name,
+                           a.clock_in_time, a.clock_out_time,
+                           a.break_start_time, a.break_end_time,
+                           CASE 
+                               WHEN a.break_start_time IS NOT NULL AND a.break_end_time IS NOT NULL
+                               THEN CAST((julianday(a.break_end_time) - julianday(a.break_start_time)) * 24 * 60 AS INTEGER)
+                               ELSE 0
+                           END as total_break_minutes,
+                           COALESCE(a.total_work_hours, 0) as total_work_hours,
+                           COALESCE(a.overtime_hours, 0) as overtime_hours,
+                           COALESCE(a.status, '') as status,
+                           COALESCE(a.notes, '') as notes
+                    FROM attendance a
+                    JOIN users u ON a.user_id = u.id
+                    WHERE a.work_date BETWEEN ? AND ? AND a.user_id = ?
+                    ORDER BY a.work_date, u.username
+                ''', (start_date, end_date, user_id))
+            else:
+                # 全ユーザーのデータ
+                cursor.execute('''
+                    SELECT a.work_date as date, 
+                           u.username, u.display_name,
+                           a.clock_in_time, a.clock_out_time,
+                           a.break_start_time, a.break_end_time,
+                           CASE 
+                               WHEN a.break_start_time IS NOT NULL AND a.break_end_time IS NOT NULL
+                               THEN CAST((julianday(a.break_end_time) - julianday(a.break_start_time)) * 24 * 60 AS INTEGER)
+                               ELSE 0
+                           END as total_break_minutes,
+                           COALESCE(a.total_work_hours, 0) as total_work_hours,
+                           COALESCE(a.overtime_hours, 0) as overtime_hours,
+                           COALESCE(a.status, '') as status,
+                           COALESCE(a.notes, '') as notes
+                    FROM attendance a
+                    JOIN users u ON a.user_id = u.id
+                    WHERE a.work_date BETWEEN ? AND ?
+                    ORDER BY a.work_date, u.username
+                ''', (start_date, end_date))
+            
+            return [dict(row) for row in cursor.fetchall()]
 
 # データベースマネージャーのインスタンスを作成（テスト時以外）
 def get_default_instances():
@@ -449,7 +502,7 @@ def get_default_instances():
     return {
         'db_manager': db_manager,
         'user_repo': UserRepository(db_manager),
-        'daily_report_repo': DailyReportRepository(db_manager),
+        # 'daily_report_repo': DailyReportRepository(db_manager),  # 一時的にコメントアウト
         'task_repo': TaskRepository(db_manager),
         'attendance_repo': AttendanceRepository(db_manager)
     }
@@ -461,7 +514,8 @@ if __name__ != '__main__':
         _instances = get_default_instances()
         db_manager = _instances['db_manager']
         user_repo = _instances['user_repo']
-        daily_report_repo = _instances['daily_report_repo']
+        # daily_report_repo = _instances['daily_report_repo']  # 一時的にコメントアウト
+        daily_report_repo = None  # 一時的にNoneに設定
         task_repo = _instances['task_repo']
         attendance_repo = _instances['attendance_repo']
     except Exception as e:

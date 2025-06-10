@@ -93,11 +93,12 @@ class CompanyBot(commands.Bot):
         logger.info("初期化処理を開始します...")
         
         # コマンドCogをロードする
-        try:
-            await self.load_extension('bot.commands.daily_report')
-            logger.info("日報機能をロードしました")
-        except Exception as e:
-            logger.error(f"日報機能のロードに失敗: {e}")
+        # 日報機能を一時的にコメントアウト
+        # try:
+        #     await self.load_extension('bot.commands.daily_report')
+        #     logger.info("日報機能をロードしました")
+        # except Exception as e:
+        #     logger.error(f"日報機能のロードに失敗: {e}")
         
         try:
             await self.load_extension('bot.commands.task_manager')
@@ -111,11 +112,12 @@ class CompanyBot(commands.Bot):
         except Exception as e:
             logger.error(f"出退勤管理機能のロードに失敗: {e}")
         
-        try:
-            await self.load_extension('bot.utils.reminder')
-            logger.info("リマインド機能をロードしました")
-        except Exception as e:
-            logger.error(f"リマインド機能のロードに失敗: {e}")
+        # リマインド機能を一時的にコメントアウト（日報関連のため）
+        # try:
+        #     await self.load_extension('bot.utils.reminder')
+        #     logger.info("リマインド機能をロードしました")
+        # except Exception as e:
+        #     logger.error(f"リマインド機能のロードに失敗: {e}")
         
         try:
             await self.load_extension('bot.commands.calendar')
