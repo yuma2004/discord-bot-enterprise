@@ -426,9 +426,34 @@ class AttendanceRepository:
             ''', (today,))
             return [dict(row) for row in cursor.fetchall()]
 
-# データベースマネージャーのインスタンスを作成
-db_manager = DatabaseManager()
-user_repo = UserRepository(db_manager)
-daily_report_repo = DailyReportRepository(db_manager)
-task_repo = TaskRepository(db_manager)
-attendance_repo = AttendanceRepository(db_manager) 
+# データベースマネージャーのインスタンスを作成（テスト時以外）
+def get_default_instances():
+    """デフォルトのデータベースインスタンスを取得"""
+    db_manager = DatabaseManager()
+    return {
+        'db_manager': db_manager,
+        'user_repo': UserRepository(db_manager),
+        'daily_report_repo': DailyReportRepository(db_manager),
+        'task_repo': TaskRepository(db_manager),
+        'attendance_repo': AttendanceRepository(db_manager)
+    }
+
+# メイン実行時のみインスタンスを作成
+if __name__ != '__main__':
+    # テスト実行時以外でインスタンス作成
+    try:
+        _instances = get_default_instances()
+        db_manager = _instances['db_manager']
+        user_repo = _instances['user_repo']
+        daily_report_repo = _instances['daily_report_repo']
+        task_repo = _instances['task_repo']
+        attendance_repo = _instances['attendance_repo']
+    except Exception as e:
+        # 設定ファイルが無い場合等はインスタンス作成をスキップ
+        logger = logging.getLogger(__name__)
+        logger.warning(f"デフォルトインスタンスの作成をスキップ: {e}")
+        db_manager = None
+        user_repo = None
+        daily_report_repo = None
+        task_repo = None
+        attendance_repo = None 

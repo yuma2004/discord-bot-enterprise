@@ -3,6 +3,12 @@ import asyncio
 import sys
 import os
 
+# テスト用環境変数を設定（他のインポートより前に設定）
+os.environ.setdefault('DISCORD_TOKEN', 'test_token')
+os.environ.setdefault('DISCORD_GUILD_ID', '123456789')
+os.environ.setdefault('DATABASE_URL', 'test_discord_bot.db')
+os.environ.setdefault('ENVIRONMENT', 'test')
+
 # プロジェクトルートをパスに追加
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
@@ -14,13 +20,13 @@ class TestDatabaseBasic(unittest.TestCase):
     
     def setUp(self):
         """テスト前のセットアップ"""
-        # テスト用データベースを使用
-        self.test_db_path = 'test_discord_bot.db'
-        if os.path.exists(self.test_db_path):
-            os.remove(self.test_db_path)
+        # 一意なテスト用データベースを使用
+        import time
+        import random
+        self.test_db_path = f'test_discord_bot_{int(time.time())}_{random.randint(1000, 9999)}.db'
         
         self.db_manager = DatabaseManager(self.test_db_path)
-        self.db_manager.initialize_database()
+        self.db_manager.init_database()
         
         self.user_repo = UserRepository(self.db_manager)
         self.daily_report_repo = DailyReportRepository(self.db_manager)
@@ -28,8 +34,24 @@ class TestDatabaseBasic(unittest.TestCase):
     
     def tearDown(self):
         """テスト後のクリーンアップ"""
-        if os.path.exists(self.test_db_path):
-            os.remove(self.test_db_path)
+        # データベース接続を確実に閉じる
+        if hasattr(self, 'db_manager'):
+            # すべての接続を閉じる
+            del self.db_manager
+        
+        # ファイルを削除
+        try:
+            if os.path.exists(self.test_db_path):
+                os.remove(self.test_db_path)
+        except PermissionError:
+            # Windowsで削除できない場合は少し待ってから再試行
+            import time
+            time.sleep(0.1)
+            try:
+                if os.path.exists(self.test_db_path):
+                    os.remove(self.test_db_path)
+            except:
+                pass  # 削除できなくても続行
     
     def test_user_operations(self):
         """ユーザー操作のテスト"""
@@ -47,7 +69,7 @@ class TestDatabaseBasic(unittest.TestCase):
         self.assertEqual(user['username'], "testuser")
         
         # ユーザー更新
-        success = self.user_repo.update_user_info("123456789", "newuser", "New User")
+        success = self.user_repo.update_user("123456789", username="newuser", display_name="New User")
         self.assertTrue(success)
         
         # 更新確認
@@ -63,18 +85,19 @@ class TestDatabaseBasic(unittest.TestCase):
         )
         
         # 日報作成
-        report_id = self.daily_report_repo.create_report(
+        from datetime import date
+        today = date.today().isoformat()
+        report_id = self.daily_report_repo.create_daily_report(
             user_id=1,
-            content="今日はプロジェクトAの設計を行いました"
+            report_date=today,
+            today_tasks="今日はプロジェクトAの設計を行いました"
         )
         self.assertIsNotNone(report_id)
         
         # 日報取得
-        from datetime import date
-        today = date.today().isoformat()
-        reports = self.daily_report_repo.get_reports_by_date(today)
-        self.assertEqual(len(reports), 1)
-        self.assertIn("プロジェクトA", reports[0]['content'])
+        report = self.daily_report_repo.get_daily_report(1, today)
+        self.assertIsNotNone(report)
+        self.assertIn("プロジェクトA", report['today_tasks'])
     
     def test_task_operations(self):
         """タスク操作のテスト"""
