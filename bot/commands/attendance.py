@@ -37,7 +37,9 @@ class AttendanceView(discord.ui.View):
                 description="本日は既に出勤記録があります",
                 color=discord.Color.orange()
             )
-            clock_in_time = datetime.fromisoformat(today_record['clock_in_time'])
+            clock_in_time = today_record['clock_in_time']
+            if isinstance(clock_in_time, str):
+                clock_in_time = datetime.fromisoformat(clock_in_time)
             embed.add_field(
                 name="出勤時刻",
                 value=clock_in_time.strftime("%H:%M"),
