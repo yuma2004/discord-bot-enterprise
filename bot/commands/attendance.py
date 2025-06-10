@@ -105,8 +105,15 @@ class AttendanceView(discord.ui.View):
             )
             
             if today_record:
-                clock_in = datetime.fromisoformat(today_record['clock_in_time'])
-                clock_out = datetime.fromisoformat(today_record['clock_out_time'])
+                # PostgreSQLでは既にdatetimeオブジェクトで返される
+                clock_in = today_record['clock_in_time']
+                clock_out = today_record['clock_out_time']
+                
+                # 文字列の場合は変換（SQLite互換性のため）
+                if isinstance(clock_in, str):
+                    clock_in = datetime.fromisoformat(clock_in)
+                if isinstance(clock_out, str):
+                    clock_out = datetime.fromisoformat(clock_out)
                 
                 embed.add_field(
                     name="出勤時刻",
@@ -320,7 +327,9 @@ class AttendanceCog(commands.Cog):
             )
             
             if record['clock_in_time']:
-                clock_in = datetime.fromisoformat(record['clock_in_time'])
+                clock_in = record['clock_in_time']
+                if isinstance(clock_in, str):
+                    clock_in = datetime.fromisoformat(clock_in)
                 embed.add_field(
                     name="出勤時刻",
                     value=clock_in.strftime("%H:%M"),
@@ -328,7 +337,9 @@ class AttendanceCog(commands.Cog):
                 )
             
             if record['clock_out_time']:
-                clock_out = datetime.fromisoformat(record['clock_out_time'])
+                clock_out = record['clock_out_time']
+                if isinstance(clock_out, str):
+                    clock_out = datetime.fromisoformat(clock_out)
                 embed.add_field(
                     name="退勤時刻",
                     value=clock_out.strftime("%H:%M"),
@@ -350,8 +361,12 @@ class AttendanceCog(commands.Cog):
                 )
             
             if record['break_start_time'] and record['break_end_time']:
-                break_start = datetime.fromisoformat(record['break_start_time'])
-                break_end = datetime.fromisoformat(record['break_end_time'])
+                break_start = record['break_start_time']
+                break_end = record['break_end_time']
+                if isinstance(break_start, str):
+                    break_start = datetime.fromisoformat(break_start)
+                if isinstance(break_end, str):
+                    break_end = datetime.fromisoformat(break_end)
                 break_duration = (break_end - break_start).total_seconds() / 3600
                 embed.add_field(
                     name="休憩時間",
@@ -392,7 +407,9 @@ class AttendanceCog(commands.Cog):
             
             time_info = ""
             if user_status['clock_in_time'] and status != '離席':
-                clock_in = datetime.fromisoformat(user_status['clock_in_time'])
+                clock_in = user_status['clock_in_time']
+                if isinstance(clock_in, str):
+                    clock_in = datetime.fromisoformat(clock_in)
                 time_info = f" (出勤: {clock_in.strftime('%H:%M')})"
             
             status_groups[status].append(f"{display_name}{time_info}")
