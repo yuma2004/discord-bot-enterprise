@@ -148,10 +148,39 @@ class PostgreSQLUserRepository:
             with self.db_manager.get_connection() as conn:
                 cursor = conn.cursor(cursor_factory=RealDictCursor)
                 cursor.execute('SELECT * FROM users WHERE discord_id = %s', (discord_id,))
-                return dict(cursor.fetchone()) if cursor.fetchone() else None
+                result = cursor.fetchone()
+                return dict(result) if result else None
         except Exception as e:
             logger.error(f"ユーザー取得エラー: {e}")
             return None
+    
+    def get_or_create_user(self, discord_id: str, username: str, display_name: str = None) -> Dict[str, Any]:
+        """ユーザーを取得、存在しない場合は作成"""
+        user = self.get_user_by_discord_id(discord_id)
+        if not user:
+            user_id = self.create_user(discord_id, username, display_name)
+            user = self.get_user_by_discord_id(discord_id)
+        return user
+    
+    def update_user(self, discord_id: str, **kwargs) -> bool:
+        """ユーザー情報を更新"""
+        if not kwargs:
+            return False
+        
+        set_clause = ', '.join([f"{key} = %s" for key in kwargs.keys()])
+        values = list(kwargs.values()) + [discord_id]
+        
+        try:
+            with self.db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(f'''
+                    UPDATE users SET {set_clause}, created_at = CURRENT_TIMESTAMP
+                    WHERE discord_id = %s
+                ''', values)
+                return cursor.rowcount > 0
+        except Exception as e:
+            logger.error(f"ユーザー更新エラー: {e}")
+            return False
 
 # Supabaseを使用する場合の設定例
 def get_supabase_config():
@@ -207,6 +236,21 @@ class PostgreSQLDailyReportRepository:
         except Exception as e:
             logger.error(f"日報取得エラー: {e}")
             return None
+    
+    def get_users_without_report(self, report_date: str) -> List[Dict[str, Any]]:
+        """指定日に日報を提出していないユーザーを取得"""
+        try:
+            with self.db_manager.get_connection() as conn:
+                cursor = conn.cursor(cursor_factory=RealDictCursor)
+                cursor.execute('''
+                    SELECT u.* FROM users u
+                    LEFT JOIN daily_reports dr ON u.id = dr.user_id AND dr.report_date = %s
+                    WHERE dr.id IS NULL
+                ''', (report_date,))
+                return [dict(row) for row in cursor.fetchall()]
+        except Exception as e:
+            logger.error(f"未提出ユーザー取得エラー: {e}")
+            return []
 
 class PostgreSQLTaskRepository:
     """PostgreSQL用タスクリポジトリ"""
@@ -246,6 +290,32 @@ class PostgreSQLTaskRepository:
         except Exception as e:
             logger.error(f"タスク取得エラー: {e}")
             return []
+    
+    def update_task_status(self, task_id: int, status: str) -> bool:
+        """タスクのステータスを更新"""
+        try:
+            with self.db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    UPDATE tasks 
+                    SET status = %s, completed_at = CASE WHEN %s = 'completed' THEN CURRENT_TIMESTAMP ELSE NULL END
+                    WHERE id = %s
+                ''', (status, status, task_id))
+                return cursor.rowcount > 0
+        except Exception as e:
+            logger.error(f"タスクステータス更新エラー: {e}")
+            return False
+    
+    def delete_task(self, task_id: int) -> bool:
+        """タスクを削除"""
+        try:
+            with self.db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('DELETE FROM tasks WHERE id = %s', (task_id,))
+                return cursor.rowcount > 0
+        except Exception as e:
+            logger.error(f"タスク削除エラー: {e}")
+            return False
 
 class PostgreSQLAttendanceRepository:
     """PostgreSQL用出退勤リポジトリ"""
@@ -290,6 +360,79 @@ class PostgreSQLAttendanceRepository:
         except Exception as e:
             logger.error(f"退勤記録エラー: {e}")
             return False
+    
+    def start_break(self, user_id: int, work_date: str = None) -> bool:
+        """休憩開始記録"""
+        if not work_date:
+            work_date = date.today().isoformat()
+        
+        try:
+            with self.db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    UPDATE attendance 
+                    SET break_start_time = %s, status = %s
+                    WHERE user_id = %s AND work_date = %s
+                ''', (datetime.now(), 'on_break', user_id, work_date))
+                return cursor.rowcount > 0
+        except Exception as e:
+            logger.error(f"休憩開始記録エラー: {e}")
+            return False
+    
+    def end_break(self, user_id: int, work_date: str = None) -> bool:
+        """休憩終了記録"""
+        if not work_date:
+            work_date = date.today().isoformat()
+        
+        try:
+            with self.db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    UPDATE attendance 
+                    SET break_end_time = %s, status = %s,
+                        total_break_minutes = COALESCE(total_break_minutes, 0) + 
+                        EXTRACT(EPOCH FROM (%s - break_start_time))/60
+                    WHERE user_id = %s AND work_date = %s
+                ''', (datetime.now(), 'present', datetime.now(), user_id, work_date))
+                return cursor.rowcount > 0
+        except Exception as e:
+            logger.error(f"休憩終了記録エラー: {e}")
+            return False
+    
+    def get_today_attendance(self, user_id: int, work_date: str = None) -> Optional[Dict[str, Any]]:
+        """今日の出退勤記録を取得"""
+        if not work_date:
+            work_date = date.today().isoformat()
+        
+        try:
+            with self.db_manager.get_connection() as conn:
+                cursor = conn.cursor(cursor_factory=RealDictCursor)
+                cursor.execute('''
+                    SELECT * FROM attendance 
+                    WHERE user_id = %s AND work_date = %s
+                ''', (user_id, work_date))
+                result = cursor.fetchone()
+                return dict(result) if result else None
+        except Exception as e:
+            logger.error(f"出退勤記録取得エラー: {e}")
+            return None
+    
+    def get_all_users_status(self) -> List[Dict[str, Any]]:
+        """全ユーザーの今日の在席状況を取得"""
+        today = date.today().isoformat()
+        try:
+            with self.db_manager.get_connection() as conn:
+                cursor = conn.cursor(cursor_factory=RealDictCursor)
+                cursor.execute('''
+                    SELECT u.username, u.display_name, a.status, a.clock_in_time, a.clock_out_time
+                    FROM users u
+                    LEFT JOIN attendance a ON u.id = a.user_id AND a.work_date = %s
+                    ORDER BY u.username
+                ''', (today,))
+                return [dict(row) for row in cursor.fetchall()]
+        except Exception as e:
+            logger.error(f"全ユーザー状況取得エラー: {e}")
+            return []
 
 # グローバルインスタンス
 db_manager = PostgreSQLManager()
