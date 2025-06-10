@@ -1,0 +1,350 @@
+{
+  "timestamp": "2025-06-11T01:57:12.155095",
+  "total_duration": 32.21514368057251,
+  "results": {
+    "test_basic": {
+      "tests_run": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "success_count": 5,
+      "duration": 1.422745943069458,
+      "details": [
+        {
+          "test": "test_command_imports (tests.test_basic.TestBotCommands.test_command_imports)",
+          "status": "SUCCESS",
+          "duration": 1.036933422088623,
+          "message": null
+        },
+        {
+          "test": "test_config_loading (tests.test_basic.TestConfig.test_config_loading)",
+          "status": "SUCCESS",
+          "duration": 0.0,
+          "message": null
+        },
+        {
+          "test": "test_daily_report_operations (tests.test_basic.TestDatabaseBasic.test_daily_report_operations)",
+          "status": "SUCCESS",
+          "duration": 0.12938165664672852,
+          "message": null
+        },
+        {
+          "test": "test_task_operations (tests.test_basic.TestDatabaseBasic.test_task_operations)",
+          "status": "SUCCESS",
+          "duration": 0.12877893447875977,
+          "message": null
+        },
+        {
+          "test": "test_user_operations (tests.test_basic.TestDatabaseBasic.test_user_operations)",
+          "status": "SUCCESS",
+          "duration": 0.1266171932220459,
+          "message": null
+        }
+      ],
+      "output": "test_command_imports (tests.test_basic.TestBotCommands.test_command_imports)\nコマンドモジュールがインポートできるかテスト ... ok\ntest_config_loading (tests.test_basic.TestConfig.test_config_loading)\n設定読み込みのテスト ... ok\ntest_daily_report_operations (tests.test_basic.TestDatabaseBasic.test_daily_report_operations)\n日報操作のテスト ... ok\ntest_task_operations (tests.test_basic.TestDatabaseBasic.test_task_operations)\nタスク操作のテスト ... ok\ntest_user_operations (tests.test_basic.TestDatabaseBasic.test_user_operations)\nユーザー操作のテスト ... ok\n\n----------------------------------------------------------------------\nRan 5 tests in 1.422s\n\nOK\n"
+    },
+    "test_attendance": {
+      "tests_run": 13,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1,
+      "success_count": 12,
+      "duration": 0.0020759105682373047,
+      "details": [
+        {
+          "test": "test_clock_in_logic (tests.test_attendance.TestAttendanceBusinessLogic.test_clock_in_logic)",
+          "status": "SUCCESS",
+          "duration": 0.0,
+          "message": null
+        },
+        {
+          "test": "test_clock_out_logic (tests.test_attendance.TestAttendanceBusinessLogic.test_clock_out_logic)",
+          "status": "SUCCESS",
+          "duration": 0.0,
+          "message": null
+        },
+        {
+          "test": "test_work_hours_calculation (tests.test_attendance.TestAttendanceBusinessLogic.test_work_hours_calculation)",
+          "status": "SUCCESS",
+          "duration": 0.0,
+          "message": null
+        },
+        {
+          "test": "test_clock_in_button_logic (tests.test_attendance.TestAttendanceCommands.test_clock_in_button_logic)",
+          "status": "SUCCESS",
+          "duration": 0.0010263919830322266,
+          "message": null
+        },
+        {
+          "test": "test_user_creation (tests.test_attendance.TestAttendanceCommands.test_user_creation)",
+          "status": "SUCCESS",
+          "duration": 0.0010495185852050781,
+          "message": null
+        },
+        {
+          "test": "test_database_url_format (tests.test_attendance.TestConfigValidation.test_database_url_format)",
+          "status": "SUCCESS",
+          "duration": 0.0,
+          "message": null
+        },
+        {
+          "test": "test_environment_variables (tests.test_attendance.TestConfigValidation.test_environment_variables)",
+          "status": "SUCCESS",
+          "duration": 0.0,
+          "message": null
+        },
+        {
+          "test": "test_postgresql_imports (tests.test_attendance.TestDatabaseCompatibility.test_postgresql_imports)",
+          "status": "SKIP",
+          "duration": 0.0,
+          "message": "PostgreSQL libraries not available in local environment"
+        },
+        {
+          "test": "test_sqlite_fallback (tests.test_attendance.TestDatabaseCompatibility.test_sqlite_fallback)",
+          "status": "SUCCESS",
+          "duration": 0.0,
+          "message": null
+        },
+        {
+          "test": "test_datetime_object_handling (tests.test_attendance.TestDateTimeCompatibility.test_datetime_object_handling)",
+          "status": "SUCCESS",
+          "duration": 0.0,
+          "message": null
+        },
+        {
+          "test": "test_string_datetime_handling (tests.test_attendance.TestDateTimeCompatibility.test_string_datetime_handling)",
+          "status": "SUCCESS",
+          "duration": 0.0,
+          "message": null
+        },
+        {
+          "test": "test_invalid_datetime_string (tests.test_attendance.TestErrorHandling.test_invalid_datetime_string)",
+          "status": "SUCCESS",
+          "duration": 0.0,
+          "message": null
+        },
+        {
+          "test": "test_none_datetime_handling (tests.test_attendance.TestErrorHandling.test_none_datetime_handling)",
+          "status": "SUCCESS",
+          "duration": 0.0,
+          "message": null
+        }
+      ],
+      "output": "test_clock_in_logic (tests.test_attendance.TestAttendanceBusinessLogic.test_clock_in_logic)\n出勤ロジックテスト ... ok\ntest_clock_out_logic (tests.test_attendance.TestAttendanceBusinessLogic.test_clock_out_logic)\n退勤ロジックテスト ... ok\ntest_work_hours_calculation (tests.test_attendance.TestAttendanceBusinessLogic.test_work_hours_calculation)\n勤務時間計算テスト ... ok\ntest_clock_in_button_logic (tests.test_attendance.TestAttendanceCommands.test_clock_in_button_logic)\n出勤ボタンロジックテスト ... ok\ntest_user_creation (tests.test_attendance.TestAttendanceCommands.test_user_creation)\nユーザー作成テスト ... ok\ntest_database_url_format (tests.test_attendance.TestConfigValidation.test_database_url_format)\nDATABASE_URL形式テスト ... ok\ntest_environment_variables (tests.test_attendance.TestConfigValidation.test_environment_variables)\n環境変数テスト ... ok\ntest_postgresql_imports (tests.test_attendance.TestDatabaseCompatibility.test_postgresql_imports)\nPostgreSQL関連のインポートテスト ... skipped 'PostgreSQL libraries not available in local environment'\ntest_sqlite_fallback (tests.test_attendance.TestDatabaseCompatibility.test_sqlite_fallback)\nSQLite フォールバックテスト ... ok\ntest_datetime_object_handling (tests.test_attendance.TestDateTimeCompatibility.test_datetime_object_handling)\ndatetimeオブジェクトの処理テスト ... ok\ntest_string_datetime_handling (tests.test_attendance.TestDateTimeCompatibility.test_string_datetime_handling)\n文字列日時の処理テスト ... ok\ntest_invalid_datetime_string (tests.test_attendance.TestErrorHandling.test_invalid_datetime_string)\n無効な日時文字列のテスト ... ok\ntest_none_datetime_handling (tests.test_attendance.TestErrorHandling.test_none_datetime_handling)\nNone値の日時処理テスト ... ok\n\n----------------------------------------------------------------------\nRan 13 tests in 0.002s\n\nOK (skipped=1)\n"
+    },
+    "test_database_integration": {
+      "tests_run": 9,
+      "failures": 0,
+      "errors": 2,
+      "skipped": 0,
+      "success_count": 7,
+      "duration": 2.4285123348236084,
+      "details": [
+        {
+          "test": "test_complete_attendance_workflow (tests.test_database_integration.TestDatabaseIntegration.test_complete_attendance_workflow)",
+          "status": "SUCCESS",
+          "duration": 0.15119504928588867,
+          "message": null
+        },
+        {
+          "test": "test_daily_report_with_tasks_integration (tests.test_database_integration.TestDatabaseIntegration.test_daily_report_with_tasks_integration)",
+          "status": "SUCCESS",
+          "duration": 0.14528107643127441,
+          "message": null
+        },
+        {
+          "test": "test_data_consistency_and_constraints (tests.test_database_integration.TestDatabaseIntegration.test_data_consistency_and_constraints)",
+          "status": "SUCCESS",
+          "duration": 0.1457529067993164,
+          "message": null
+        },
+        {
+          "test": "test_monthly_attendance_report (tests.test_database_integration.TestDatabaseIntegration.test_monthly_attendance_report)",
+          "status": "SUCCESS",
+          "duration": 0.17032504081726074,
+          "message": null
+        },
+        {
+          "test": "test_multiple_users_attendance (tests.test_database_integration.TestDatabaseIntegration.test_multiple_users_attendance)",
+          "status": "ERROR",
+          "duration": 0.036264896392822266,
+          "message": "Traceback (most recent call last):\n  File \"C:\\Users\\user\\Desktop\\新しいフォルダー (2)\\tests\\..\\tests\\test_database_integration.py\", line 131, in test_multiple_users_attendance\n    all_status = self.attendance_repo.get_all_users_status()\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\user\\Desktop\\新しいフォルダー (2)\\database.py\", line 432, in get_all_users_status\n    today = date.today().isoformat()\n            ^^^^\nNameError: name 'date' is not defined\n"
+        },
+        {
+          "test": "test_performance_with_large_dataset (tests.test_database_integration.TestDatabaseIntegration.test_performance_with_large_dataset)",
+          "status": "ERROR",
+          "duration": 1.313537836074829,
+          "message": "Traceback (most recent call last):\n  File \"C:\\Users\\user\\Desktop\\新しいフォルダー (2)\\tests\\..\\tests\\test_database_integration.py\", line 315, in test_performance_with_large_dataset\n    all_status = self.attendance_repo.get_all_users_status()\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\user\\Desktop\\新しいフォルダー (2)\\database.py\", line 432, in get_all_users_status\n    today = date.today().isoformat()\n            ^^^^\nNameError: name 'date' is not defined\n"
+        },
+        {
+          "test": "test_work_hours_calculation_edge_cases (tests.test_database_integration.TestDatabaseIntegration.test_work_hours_calculation_edge_cases)",
+          "status": "SUCCESS",
+          "duration": 0.15844511985778809,
+          "message": null
+        },
+        {
+          "test": "test_concurrent_access_simulation (tests.test_database_integration.TestErrorRecovery.test_concurrent_access_simulation)",
+          "status": "SUCCESS",
+          "duration": 0.07742142677307129,
+          "message": null
+        },
+        {
+          "test": "test_database_corruption_recovery (tests.test_database_integration.TestErrorRecovery.test_database_corruption_recovery)",
+          "status": "SUCCESS",
+          "duration": 0.026892900466918945,
+          "message": null
+        }
+      ],
+      "output": "test_complete_attendance_workflow (tests.test_database_integration.TestDatabaseIntegration.test_complete_attendance_workflow)\n完全な出退勤ワークフローのテスト ... ok\ntest_daily_report_with_tasks_integration (tests.test_database_integration.TestDatabaseIntegration.test_daily_report_with_tasks_integration)\n日報とタスクの統合テスト ... ok\ntest_data_consistency_and_constraints (tests.test_database_integration.TestDatabaseIntegration.test_data_consistency_and_constraints)\nデータ整合性と制約のテスト ... ok\ntest_monthly_attendance_report (tests.test_database_integration.TestDatabaseIntegration.test_monthly_attendance_report)\n月次勤怠レポートテスト ... ok\ntest_multiple_users_attendance (tests.test_database_integration.TestDatabaseIntegration.test_multiple_users_attendance)\n複数ユーザーの出退勤管理テスト ... ERROR\ntest_performance_with_large_dataset (tests.test_database_integration.TestDatabaseIntegration.test_performance_with_large_dataset)\n大規模データセットでのパフォーマンステスト ... ERROR\ntest_work_hours_calculation_edge_cases (tests.test_database_integration.TestDatabaseIntegration.test_work_hours_calculation_edge_cases)\n勤務時間計算のエッジケーステスト ... ok\ntest_concurrent_access_simulation (tests.test_database_integration.TestErrorRecovery.test_concurrent_access_simulation)\n同時アクセスシミュレーションテスト ... ok\ntest_database_corruption_recovery (tests.test_database_integration.TestErrorRecovery.test_database_corruption_recovery)\nデータベース破損からの回復テスト ... ok\n\n======================================================================\nERROR: test_multiple_users_attendance (tests.test_database_integration.TestDatabaseIntegration.test_multiple_users_attendance)\n複数ユーザーの出退勤管理テスト\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\user\\Desktop\\新しいフォルダー (2)\\tests\\..\\tests\\test_database_integration.py\", line 131, in test_multiple_users_attendance\n    all_status = self.attendance_repo.get_all_users_status()\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\user\\Desktop\\新しいフォルダー (2)\\database.py\", line 432, in get_all_users_status\n    today = date.today().isoformat()\n            ^^^^\nNameError: name 'date' is not defined\n\n======================================================================\nERROR: test_performance_with_large_dataset (tests.test_database_integration.TestDatabaseIntegration.test_performance_with_large_dataset)\n大規模データセットでのパフォーマンステスト\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\user\\Desktop\\新しいフォルダー (2)\\tests\\..\\tests\\test_database_integration.py\", line 315, in test_performance_with_large_dataset\n    all_status = self.attendance_repo.get_all_users_status()\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\user\\Desktop\\新しいフォルダー (2)\\database.py\", line 432, in get_all_users_status\n    today = date.today().isoformat()\n            ^^^^\nNameError: name 'date' is not defined\n\n----------------------------------------------------------------------\nRan 9 tests in 2.428s\n\nFAILED (errors=2)\n"
+    },
+    "test_error_handling": {
+      "tests_run": 13,
+      "failures": 0,
+      "errors": 3,
+      "skipped": 0,
+      "success_count": 10,
+      "duration": 0.47211623191833496,
+      "details": [
+        {
+          "test": "test_break_end_without_break_start (tests.test_error_handling.TestAttendanceErrorHandling.test_break_end_without_break_start)",
+          "status": "SUCCESS",
+          "duration": 0.026975631713867188,
+          "message": null
+        },
+        {
+          "test": "test_break_operations_without_clock_in (tests.test_error_handling.TestAttendanceErrorHandling.test_break_operations_without_clock_in)",
+          "status": "SUCCESS",
+          "duration": 0.02094244956970215,
+          "message": null
+        },
+        {
+          "test": "test_clock_out_without_clock_in (tests.test_error_handling.TestAttendanceErrorHandling.test_clock_out_without_clock_in)",
+          "status": "SUCCESS",
+          "duration": 0.04912686347961426,
+          "message": null
+        },
+        {
+          "test": "test_database_connection_error_handling (tests.test_error_handling.TestAttendanceErrorHandling.test_database_connection_error_handling)",
+          "status": "ERROR",
+          "duration": 0.020798683166503906,
+          "message": "Traceback (most recent call last):\n  File \"C:\\Users\\user\\Desktop\\新しいフォルダー (2)\\tests\\test_error_handling.py\", line 148, in test_database_connection_error_handling\n    invalid_db_manager = DatabaseManager(\"/invalid/path/to/database.db\")\n                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\user\\Desktop\\新しいフォルダー (2)\\database.py\", line 14, in __init__\n    self.init_database()\n  File \"C:\\Users\\user\\Desktop\\新しいフォルダー (2)\\database.py\", line 24, in init_database\n    with self.get_connection() as conn:\n         ^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\user\\Desktop\\新しいフォルダー (2)\\database.py\", line 18, in get_connection\n    conn = sqlite3.connect(self.db_path)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsqlite3.OperationalError: unable to open database file\n"
+        },
+        {
+          "test": "test_extremely_large_work_hours (tests.test_error_handling.TestAttendanceErrorHandling.test_extremely_large_work_hours)",
+          "status": "SUCCESS",
+          "duration": 0.04051375389099121,
+          "message": null
+        },
+        {
+          "test": "test_invalid_datetime_format_handling (tests.test_error_handling.TestAttendanceErrorHandling.test_invalid_datetime_format_handling)",
+          "status": "SUCCESS",
+          "duration": 0.03812527656555176,
+          "message": null
+        },
+        {
+          "test": "test_negative_work_hours (tests.test_error_handling.TestAttendanceErrorHandling.test_negative_work_hours)",
+          "status": "SUCCESS",
+          "duration": 0.05259060859680176,
+          "message": null
+        },
+        {
+          "test": "test_none_total_work_hours_handling (tests.test_error_handling.TestAttendanceErrorHandling.test_none_total_work_hours_handling)",
+          "status": "SUCCESS",
+          "duration": 0.034113407135009766,
+          "message": null
+        },
+        {
+          "test": "test_rapid_clock_operations (tests.test_error_handling.TestConcurrencyAndRaceConditions.test_rapid_clock_operations)",
+          "status": "SUCCESS",
+          "duration": 0.11302065849304199,
+          "message": null
+        },
+        {
+          "test": "test_mixed_datetime_formats (tests.test_error_handling.TestDataTypeCompatibility.test_mixed_datetime_formats)",
+          "status": "SUCCESS",
+          "duration": 0.034798383712768555,
+          "message": null
+        },
+        {
+          "test": "test_unicode_and_special_characters (tests.test_error_handling.TestDataTypeCompatibility.test_unicode_and_special_characters)",
+          "status": "SUCCESS",
+          "duration": 0.03258705139160156,
+          "message": null
+        },
+        {
+          "test": "test_clock_out_with_invalid_datetime_strings (tests.test_error_handling.TestUIErrorHandling.test_clock_out_with_invalid_datetime_strings)",
+          "status": "ERROR",
+          "duration": 0.005173683166503906,
+          "message": "Traceback (most recent call last):\n  File \"C:\\Users\\user\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\unittest\\mock.py\", line 1393, in patched\n    return func(*newargs, **newkeywargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\user\\Desktop\\新しいフォルダー (2)\\tests\\test_error_handling.py\", line 282, in test_clock_out_with_invalid_datetime_strings\n    view = AttendanceView()\n           ^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\user\\Desktop\\新しいフォルダー (2)\\bot\\commands\\attendance.py\", line 17, in __init__\n    super().__init__(timeout=None)  # タイムアウトなし\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\user\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\discord\\ui\\view.py\", line 195, in __init__\n    self.__stopped: asyncio.Future[bool] = asyncio.get_running_loop().create_future()\n                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^\nRuntimeError: no running event loop\n"
+        },
+        {
+          "test": "test_clock_out_with_none_values (tests.test_error_handling.TestUIErrorHandling.test_clock_out_with_none_values)",
+          "status": "ERROR",
+          "duration": 0.0010488033294677734,
+          "message": "Traceback (most recent call last):\n  File \"C:\\Users\\user\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\unittest\\mock.py\", line 1393, in patched\n    return func(*newargs, **newkeywargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\user\\Desktop\\新しいフォルダー (2)\\tests\\test_error_handling.py\", line 240, in test_clock_out_with_none_values\n    view = AttendanceView()\n           ^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\user\\Desktop\\新しいフォルダー (2)\\bot\\commands\\attendance.py\", line 17, in __init__\n    super().__init__(timeout=None)  # タイムアウトなし\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\user\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\discord\\ui\\view.py\", line 195, in __init__\n    self.__stopped: asyncio.Future[bool] = asyncio.get_running_loop().create_future()\n                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^\nRuntimeError: no running event loop\n"
+        }
+      ],
+      "output": "test_break_end_without_break_start (tests.test_error_handling.TestAttendanceErrorHandling.test_break_end_without_break_start)\n休憩開始なしでの休憩終了テスト ... ok\ntest_break_operations_without_clock_in (tests.test_error_handling.TestAttendanceErrorHandling.test_break_operations_without_clock_in)\n出勤記録なしでの休憩操作テスト ... ok\ntest_clock_out_without_clock_in (tests.test_error_handling.TestAttendanceErrorHandling.test_clock_out_without_clock_in)\n出勤記録なしでの退勤処理テスト ... ok\ntest_database_connection_error_handling (tests.test_error_handling.TestAttendanceErrorHandling.test_database_connection_error_handling)\nデータベース接続エラーのハンドリングテスト ... ERROR\ntest_extremely_large_work_hours (tests.test_error_handling.TestAttendanceErrorHandling.test_extremely_large_work_hours)\n異常に大きな勤務時間のテスト ... ok\ntest_invalid_datetime_format_handling (tests.test_error_handling.TestAttendanceErrorHandling.test_invalid_datetime_format_handling)\n不正な日時形式のハンドリングテスト ... ok\ntest_negative_work_hours (tests.test_error_handling.TestAttendanceErrorHandling.test_negative_work_hours)\n負の勤務時間のテスト（時刻操作によるエラー） ... ok\ntest_none_total_work_hours_handling (tests.test_error_handling.TestAttendanceErrorHandling.test_none_total_work_hours_handling)\ntotal_work_hoursがNoneの場合のハンドリングテスト（修正したバグ） ... ok\ntest_rapid_clock_operations (tests.test_error_handling.TestConcurrencyAndRaceConditions.test_rapid_clock_operations)\n高速な出退勤操作のテスト ... ok\ntest_mixed_datetime_formats (tests.test_error_handling.TestDataTypeCompatibility.test_mixed_datetime_formats)\n混在する日時形式のテスト ... ok\ntest_unicode_and_special_characters (tests.test_error_handling.TestDataTypeCompatibility.test_unicode_and_special_characters)\nUnicode文字と特殊文字のテスト ... ok\ntest_clock_out_with_invalid_datetime_strings (tests.test_error_handling.TestUIErrorHandling.test_clock_out_with_invalid_datetime_strings)\n不正な日時文字列での退勤処理テスト ... ERROR\ntest_clock_out_with_none_values (tests.test_error_handling.TestUIErrorHandling.test_clock_out_with_none_values)\n退勤時のNone値ハンドリングテスト（修正したバグ） ... ERROR\n\n======================================================================\nERROR: test_database_connection_error_handling (tests.test_error_handling.TestAttendanceErrorHandling.test_database_connection_error_handling)\nデータベース接続エラーのハンドリングテスト\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\user\\Desktop\\新しいフォルダー (2)\\tests\\test_error_handling.py\", line 148, in test_database_connection_error_handling\n    invalid_db_manager = DatabaseManager(\"/invalid/path/to/database.db\")\n                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\user\\Desktop\\新しいフォルダー (2)\\database.py\", line 14, in __init__\n    self.init_database()\n  File \"C:\\Users\\user\\Desktop\\新しいフォルダー (2)\\database.py\", line 24, in init_database\n    with self.get_connection() as conn:\n         ^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\user\\Desktop\\新しいフォルダー (2)\\database.py\", line 18, in get_connection\n    conn = sqlite3.connect(self.db_path)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsqlite3.OperationalError: unable to open database file\n\n======================================================================\nERROR: test_clock_out_with_invalid_datetime_strings (tests.test_error_handling.TestUIErrorHandling.test_clock_out_with_invalid_datetime_strings)\n不正な日時文字列での退勤処理テスト\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\user\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\unittest\\mock.py\", line 1393, in patched\n    return func(*newargs, **newkeywargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\user\\Desktop\\新しいフォルダー (2)\\tests\\test_error_handling.py\", line 282, in test_clock_out_with_invalid_datetime_strings\n    view = AttendanceView()\n           ^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\user\\Desktop\\新しいフォルダー (2)\\bot\\commands\\attendance.py\", line 17, in __init__\n    super().__init__(timeout=None)  # タイムアウトなし\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\user\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\discord\\ui\\view.py\", line 195, in __init__\n    self.__stopped: asyncio.Future[bool] = asyncio.get_running_loop().create_future()\n                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^\nRuntimeError: no running event loop\n\n======================================================================\nERROR: test_clock_out_with_none_values (tests.test_error_handling.TestUIErrorHandling.test_clock_out_with_none_values)\n退勤時のNone値ハンドリングテスト（修正したバグ）\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\user\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\unittest\\mock.py\", line 1393, in patched\n    return func(*newargs, **newkeywargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\user\\Desktop\\新しいフォルダー (2)\\tests\\test_error_handling.py\", line 240, in test_clock_out_with_none_values\n    view = AttendanceView()\n           ^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\user\\Desktop\\新しいフォルダー (2)\\bot\\commands\\attendance.py\", line 17, in __init__\n    super().__init__(timeout=None)  # タイムアウトなし\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\user\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\discord\\ui\\view.py\", line 195, in __init__\n    self.__stopped: asyncio.Future[bool] = asyncio.get_running_loop().create_future()\n                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^\nRuntimeError: no running event loop\n\n----------------------------------------------------------------------\nRan 13 tests in 0.472s\n\nFAILED (errors=3)\n"
+    },
+    "test_performance": {
+      "tests_run": 7,
+      "failures": 1,
+      "errors": 2,
+      "skipped": 0,
+      "success_count": 4,
+      "duration": 27.76834988594055,
+      "details": [
+        {
+          "test": "test_concurrent_attendance_operations (tests.test_performance.TestConcurrentPerformance.test_concurrent_attendance_operations)",
+          "status": "SUCCESS",
+          "duration": 0.4939303398132324,
+          "message": null
+        },
+        {
+          "test": "test_read_write_concurrency (tests.test_performance.TestConcurrentPerformance.test_read_write_concurrency)",
+          "status": "FAILURE",
+          "duration": 0.5075631141662598,
+          "message": "Traceback (most recent call last):\n  File \"C:\\Users\\user\\Desktop\\新しいフォルダー (2)\\tests\\test_performance.py\", line 359, in test_read_write_concurrency\n    self.assertEqual(len(errors), 0, f\"同時読み書き処理でエラー発生: {errors}\")\nAssertionError: 3 != 0 : 同時読み書き処理でエラー発生: [\"Reader error: name 'date' is not defined\", \"Reader error: name 'date' is not defined\", \"Reader error: name 'date' is not defined\"]\n"
+        },
+        {
+          "test": "test_stress_test (tests.test_performance.TestConcurrentPerformance.test_stress_test)",
+          "status": "SUCCESS",
+          "duration": 3.730159044265747,
+          "message": null
+        },
+        {
+          "test": "test_bulk_attendance_records_performance (tests.test_performance.TestDatabasePerformance.test_bulk_attendance_records_performance)",
+          "status": "SUCCESS",
+          "duration": 1.9960675239562988,
+          "message": null
+        },
+        {
+          "test": "test_bulk_user_creation_performance (tests.test_performance.TestDatabasePerformance.test_bulk_user_creation_performance)",
+          "status": "SUCCESS",
+          "duration": 4.873703479766846,
+          "message": null
+        },
+        {
+          "test": "test_complex_query_performance (tests.test_performance.TestDatabasePerformance.test_complex_query_performance)",
+          "status": "ERROR",
+          "duration": 15.589446306228638,
+          "message": "Traceback (most recent call last):\n  File \"C:\\Users\\user\\Desktop\\新しいフォルダー (2)\\tests\\test_performance.py\", line 147, in test_complex_query_performance\n    all_status = self.attendance_repo.get_all_users_status()\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\user\\Desktop\\新しいフォルダー (2)\\database.py\", line 432, in get_all_users_status\n    today = date.today().isoformat()\n            ^^^^\nNameError: name 'date' is not defined\n"
+        },
+        {
+          "test": "test_database_size_impact (tests.test_performance.TestDatabasePerformance.test_database_size_impact)",
+          "status": "ERROR",
+          "duration": 0.5741195678710938,
+          "message": "Traceback (most recent call last):\n  File \"C:\\Users\\user\\Desktop\\新しいフォルダー (2)\\tests\\test_performance.py\", line 182, in test_database_size_impact\n    all_status = self.attendance_repo.get_all_users_status()\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\user\\Desktop\\新しいフォルダー (2)\\database.py\", line 432, in get_all_users_status\n    today = date.today().isoformat()\n            ^^^^\nNameError: name 'date' is not defined\n"
+        }
+      ],
+      "output": "test_concurrent_attendance_operations (tests.test_performance.TestConcurrentPerformance.test_concurrent_attendance_operations)\n同時出退勤操作のパフォーマンステスト ... ok\ntest_read_write_concurrency (tests.test_performance.TestConcurrentPerformance.test_read_write_concurrency)\n読み書き同時処理のパフォーマンステスト ... FAIL\ntest_stress_test (tests.test_performance.TestConcurrentPerformance.test_stress_test)\nストレステスト ... ok\ntest_bulk_attendance_records_performance (tests.test_performance.TestDatabasePerformance.test_bulk_attendance_records_performance)\n大量出退勤記録のパフォーマンステスト ... ok\ntest_bulk_user_creation_performance (tests.test_performance.TestDatabasePerformance.test_bulk_user_creation_performance)\n大量ユーザー作成のパフォーマンステスト ... ok\ntest_complex_query_performance (tests.test_performance.TestDatabasePerformance.test_complex_query_performance)\n複雑なクエリのパフォーマンステスト ... ERROR\ntest_database_size_impact (tests.test_performance.TestDatabasePerformance.test_database_size_impact)\nデータベースサイズがパフォーマンスに与える影響のテスト ... ERROR\n\n======================================================================\nERROR: test_complex_query_performance (tests.test_performance.TestDatabasePerformance.test_complex_query_performance)\n複雑なクエリのパフォーマンステスト\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\user\\Desktop\\新しいフォルダー (2)\\tests\\test_performance.py\", line 147, in test_complex_query_performance\n    all_status = self.attendance_repo.get_all_users_status()\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\user\\Desktop\\新しいフォルダー (2)\\database.py\", line 432, in get_all_users_status\n    today = date.today().isoformat()\n            ^^^^\nNameError: name 'date' is not defined\n\n======================================================================\nERROR: test_database_size_impact (tests.test_performance.TestDatabasePerformance.test_database_size_impact)\nデータベースサイズがパフォーマンスに与える影響のテスト\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\user\\Desktop\\新しいフォルダー (2)\\tests\\test_performance.py\", line 182, in test_database_size_impact\n    all_status = self.attendance_repo.get_all_users_status()\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\user\\Desktop\\新しいフォルダー (2)\\database.py\", line 432, in get_all_users_status\n    today = date.today().isoformat()\n            ^^^^\nNameError: name 'date' is not defined\n\n======================================================================\nFAIL: test_read_write_concurrency (tests.test_performance.TestConcurrentPerformance.test_read_write_concurrency)\n読み書き同時処理のパフォーマンステスト\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\user\\Desktop\\新しいフォルダー (2)\\tests\\test_performance.py\", line 359, in test_read_write_concurrency\n    self.assertEqual(len(errors), 0, f\"同時読み書き処理でエラー発生: {errors}\")\nAssertionError: 3 != 0 : 同時読み書き処理でエラー発生: [\"Reader error: name 'date' is not defined\", \"Reader error: name 'date' is not defined\", \"Reader error: name 'date' is not defined\"]\n\n----------------------------------------------------------------------\nRan 7 tests in 27.768s\n\nFAILED (failures=1, errors=2)\n"
+    }
+  },
+  "summary": {
+    "total_tests": 47,
+    "total_success": 38,
+    "total_failures": 1,
+    "total_errors": 7,
+    "total_skipped": 1
+  }
+}

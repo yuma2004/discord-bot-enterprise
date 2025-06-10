@@ -108,35 +108,56 @@ class AttendanceView(discord.ui.View):
             
             if today_record:
                 # PostgreSQLでは既にdatetimeオブジェクトで返される
-                clock_in = today_record['clock_in_time']
-                clock_out = today_record['clock_out_time']
+                clock_in = today_record.get('clock_in_time')
+                clock_out = today_record.get('clock_out_time')
                 
-                # 文字列の場合は変換（SQLite互換性のため）
-                if isinstance(clock_in, str):
-                    clock_in = datetime.fromisoformat(clock_in)
-                if isinstance(clock_out, str):
-                    clock_out = datetime.fromisoformat(clock_out)
+                # 安全な日時変換
+                try:
+                    if clock_in:
+                        if isinstance(clock_in, str):
+                            clock_in = datetime.fromisoformat(clock_in)
+                    if clock_out:
+                        if isinstance(clock_out, str):
+                            clock_out = datetime.fromisoformat(clock_out)
+                except (ValueError, TypeError) as e:
+                    logger.error(f"日時変換エラー: {e}")
+                    clock_in = None
+                    clock_out = None
                 
-                embed.add_field(
-                    name="出勤時刻",
-                    value=clock_in.strftime("%H:%M"),
-                    inline=True
-                )
-                embed.add_field(
-                    name="退勤時刻",
-                    value=clock_out.strftime("%H:%M"),
-                    inline=True
-                )
-                embed.add_field(
-                    name="勤務時間",
-                    value=f"{today_record['total_work_hours']:.1f}時間",
-                    inline=True
-                )
+                if clock_in:
+                    embed.add_field(
+                        name="出勤時刻",
+                        value=clock_in.strftime("%H:%M"),
+                        inline=True
+                    )
+                if clock_out:
+                    embed.add_field(
+                        name="退勤時刻",
+                        value=clock_out.strftime("%H:%M"),
+                        inline=True
+                    )
                 
-                if today_record['overtime_hours'] > 0:
+                # 勤務時間の安全な表示
+                total_hours = today_record.get('total_work_hours')
+                if total_hours is not None:
+                    embed.add_field(
+                        name="勤務時間",
+                        value=f"{total_hours:.1f}時間",
+                        inline=True
+                    )
+                else:
+                    embed.add_field(
+                        name="勤務時間",
+                        value="計算中...",
+                        inline=True
+                    )
+                
+                # 残業時間の安全な表示
+                overtime_hours = today_record.get('overtime_hours')
+                if overtime_hours is not None and overtime_hours > 0:
                     embed.add_field(
                         name="残業時間",
-                        value=f"{today_record['overtime_hours']:.1f}時間",
+                        value=f"{overtime_hours:.1f}時間",
                         inline=True
                     )
         else:

@@ -1,6 +1,6 @@
 import sqlite3
 import logging
-from datetime import datetime
+from datetime import datetime, date
 from typing import List, Dict, Any, Optional
 from config import Config
 
@@ -315,16 +315,32 @@ class AttendanceRepository:
             if not record or not record['clock_in_time']:
                 return False
             
-            # 勤務時間を計算
-            clock_in = datetime.fromisoformat(record['clock_in_time'])
-            total_hours = (now - clock_in).total_seconds() / 3600
-            
-            # 休憩時間を引く
-            if record['break_start_time'] and record['break_end_time']:
-                break_start = datetime.fromisoformat(record['break_start_time'])
-                break_end = datetime.fromisoformat(record['break_end_time'])
-                break_hours = (break_end - break_start).total_seconds() / 3600
-                total_hours -= break_hours
+            # 勤務時間を計算（型安全な処理）
+            try:
+                if isinstance(record['clock_in_time'], str):
+                    clock_in = datetime.fromisoformat(record['clock_in_time'])
+                else:
+                    clock_in = record['clock_in_time']
+                
+                total_hours = (now - clock_in).total_seconds() / 3600
+                
+                # 休憩時間を引く
+                if record['break_start_time'] and record['break_end_time']:
+                    if isinstance(record['break_start_time'], str):
+                        break_start = datetime.fromisoformat(record['break_start_time'])
+                    else:
+                        break_start = record['break_start_time']
+                    
+                    if isinstance(record['break_end_time'], str):
+                        break_end = datetime.fromisoformat(record['break_end_time'])
+                    else:
+                        break_end = record['break_end_time']
+                    
+                    break_hours = (break_end - break_start).total_seconds() / 3600
+                    total_hours -= break_hours
+            except (ValueError, TypeError) as e:
+                logger.error(f"日時処理エラー: {e}")
+                return False
             
             # 残業時間を計算（8時間を超えた分）
             overtime_hours = max(0, total_hours - 8.0)
