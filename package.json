@@ -1,0 +1,44 @@
+{
+  "name": "discord-bot-enterprise",
+  "version": "1.0.0",
+  "description": "企業用Discord Bot with Supabase",
+  "scripts": {
+    "dev": "supabase start && echo 'Supabase started. Run: python main.py'",
+    "db:reset": "supabase db reset",
+    "db:migration": "supabase migration new",
+    "db:push": "supabase db push",
+    "db:dump": "supabase db dump -f backup.sql",
+    "studio": "supabase studio",
+    "stop": "supabase stop",
+    "status": "supabase status",
+    "logs": "supabase logs",
+    "link": "supabase link",
+    "generate-types": "supabase gen types typescript --local > types/supabase.ts",
+    "koyeb:login": "koyeb login",
+    "koyeb:deploy": "koyeb apps deploy --file koyeb.yaml",
+    "koyeb:redeploy": "koyeb services redeploy discord-bot",
+    "koyeb:status": "koyeb services describe discord-bot",
+    "koyeb:logs": "koyeb services logs discord-bot --follow",
+    "koyeb:secrets": "koyeb secrets list",
+    "deploy:full": "chmod +x scripts/koyeb_deploy.sh && scripts/koyeb_deploy.sh deploy",
+    "deploy:status": "chmod +x scripts/koyeb_deploy.sh && scripts/koyeb_deploy.sh status"
+  },
+  "keywords": [
+    "discord",
+    "bot",
+    "supabase",
+    "postgresql",
+    "enterprise"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "supabase": "^1.137.0"
+  },
+  "optionalDependencies": {
+    "@koyeb/koyeb-api": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+} 

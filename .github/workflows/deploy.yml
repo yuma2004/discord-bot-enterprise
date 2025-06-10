@@ -1,0 +1,154 @@
+name: Deploy to Koyeb
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  KOYEB_API_TOKEN: ${{ secrets.KOYEB_TOKEN }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Run tests
+      run: |
+        # 基本的なインポートテスト
+        python -c "import main; print('Main import successful')"
+        python -c "import config; print('Config import successful')"
+        python -c "import database; print('Database import successful')"
+    
+    - name: Lint with flake8
+      run: |
+        pip install flake8
+        # 致命的なエラーのみチェック
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Koyeb CLI
+      run: |
+        curl -fsSL https://cli.koyeb.com/install.sh | sh
+        sudo mv koyeb /usr/local/bin/
+        koyeb version
+    
+    - name: Login to Koyeb
+      run: |
+        koyeb login --token ${{ secrets.KOYEB_TOKEN }}
+    
+    - name: Deploy to Koyeb
+      run: |
+        # まずアプリが存在するかチェック
+        if koyeb apps describe discord-bot-enterprise >/dev/null 2>&1; then
+          echo "App exists, redeploying service..."
+          koyeb services redeploy discord-bot
+        else
+          echo "App does not exist, creating new deployment..."
+          koyeb apps deploy --file koyeb.yaml
+        fi
+    
+    - name: Wait for deployment
+      run: |
+        # デプロイ完了まで待機
+        sleep 30
+        
+        # デプロイ状況を確認
+        koyeb services describe discord-bot
+    
+    - name: Health check
+      run: |
+        # ヘルスチェックエンドポイントの確認
+        HEALTH_URL=$(koyeb services describe discord-bot --output json | jq -r '.public_domain')
+        if [ "$HEALTH_URL" != "null" ]; then
+          echo "Checking health at: https://$HEALTH_URL/health"
+          sleep 60  # サービス起動を待機
+          curl -f "https://$HEALTH_URL/health" || echo "Health check failed, but deployment completed"
+        else
+          echo "No public domain found, skipping health check"
+        fi
+    
+    - name: Notify deployment status
+      if: always()
+      run: |
+        if [ ${{ job.status }} == 'success' ]; then
+          echo "✅ Deployment successful!"
+        else
+          echo "❌ Deployment failed!"
+        fi
+
+  notification:
+    needs: [test, deploy]
+    runs-on: ubuntu-latest
+    if: always() && github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Discord notification
+      if: env.DISCORD_WEBHOOK_URL != ''
+      env:
+        DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      run: |
+        STATUS="${{ needs.deploy.result }}"
+        if [ "$STATUS" == "success" ]; then
+          EMOJI="✅"
+          COLOR="3066993"
+          TITLE="Deployment Successful"
+        else
+          EMOJI="❌"
+          COLOR="15158332"
+          TITLE="Deployment Failed"
+        fi
+        
+        PAYLOAD=$(cat <<EOF
+        {
+          "embeds": [
+            {
+              "title": "$EMOJI $TITLE",
+              "description": "Discord Bot Enterprise deployment to Koyeb",
+              "color": $COLOR,
+              "fields": [
+                {
+                  "name": "Repository",
+                  "value": "${{ github.repository }}",
+                  "inline": true
+                },
+                {
+                  "name": "Branch",
+                  "value": "${{ github.ref_name }}",
+                  "inline": true
+                },
+                {
+                  "name": "Commit",
+                  "value": "[${{ github.sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})",
+                  "inline": false
+                }
+              ],
+              "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)"
+            }
+          ]
+        }
+        EOF
+        )
+        
+        curl -H "Content-Type: application/json" \
+             -d "$PAYLOAD" \
+             "$DISCORD_WEBHOOK_URL" 

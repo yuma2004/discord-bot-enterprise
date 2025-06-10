@@ -1,0 +1,55 @@
+name: discord-bot-enterprise
+services:
+  - name: discord-bot
+    docker:
+      dockerfile: Dockerfile
+    instance_type: nano
+    regions:
+      - fra
+    scaling:
+      min: 1
+      max: 1
+    env:
+      - key: DISCORD_TOKEN
+        scope: project
+        secret: discord-token
+      - key: DATABASE_URL
+        scope: project
+        secret: database-url
+      - key: ENVIRONMENT
+        value: production
+      - key: BOT_PREFIX
+        value: "!"
+      - key: TIMEZONE
+        value: Asia/Tokyo
+      - key: DAILY_REPORT_TIME
+        value: "17:00"
+      - key: DEBUG
+        value: "false"
+      - key: LOG_LEVEL
+        value: INFO
+      - key: GOOGLE_CLIENT_ID
+        scope: project
+        secret: google-client-id
+      - key: GOOGLE_CLIENT_SECRET
+        scope: project
+        secret: google-client-secret
+      - key: GOOGLE_CALENDAR_ID
+        scope: project
+        secret: google-calendar-id
+    ports:
+      - port: 8000
+        protocol: http
+    health_checks:
+      - http:
+          path: /health
+          port: 8000
+    checks:
+      - http:
+          path: /health
+          port: 8000
+    resources:
+      memory: 256Mi
+      cpu: 0.1
+    restart_policy: always
+    auto_deploy: true 
