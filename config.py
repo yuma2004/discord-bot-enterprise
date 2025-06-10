@@ -20,6 +20,7 @@ class Config:
     DATABASE_URL = os.getenv('DATABASE_URL', 'discord_bot.db')
     
     # アプリケーション設定
+    ENVIRONMENT = os.getenv('ENVIRONMENT', 'development')
     TIMEZONE = os.getenv('TIMEZONE', 'Asia/Tokyo')
     DAILY_REPORT_TIME = os.getenv('DAILY_REPORT_TIME', '17:00')
     MEETING_REMINDER_MINUTES = int(os.getenv('MEETING_REMINDER_MINUTES', 15))
