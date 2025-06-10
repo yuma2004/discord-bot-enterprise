@@ -164,6 +164,136 @@ def get_supabase_config():
         'password': os.getenv('SUPABASE_PASSWORD'),
     }
 
+class PostgreSQLDailyReportRepository:
+    """PostgreSQL用日報リポジトリ"""
+    
+    def __init__(self, db_manager: PostgreSQLManager):
+        self.db_manager = db_manager
+    
+    def create_daily_report(self, user_id: int, report_date: str, content: str, 
+                          mood: str = 'normal', challenges: str = '', next_day_plan: str = '') -> Optional[int]:
+        """日報を作成"""
+        try:
+            with self.db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    INSERT INTO daily_reports (user_id, report_date, content, mood, challenges, next_day_plan)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (user_id, report_date) DO UPDATE SET
+                        content = EXCLUDED.content,
+                        mood = EXCLUDED.mood,
+                        challenges = EXCLUDED.challenges,
+                        next_day_plan = EXCLUDED.next_day_plan
+                    RETURNING id
+                ''', (user_id, report_date, content, mood, challenges, next_day_plan))
+                
+                result = cursor.fetchone()
+                return result[0] if result else None
+        except Exception as e:
+            logger.error(f"日報作成エラー: {e}")
+            return None
+    
+    def get_daily_report(self, user_id: int, report_date: str) -> Optional[Dict[str, Any]]:
+        """指定日の日報を取得"""
+        try:
+            with self.db_manager.get_connection() as conn:
+                cursor = conn.cursor(cursor_factory=RealDictCursor)
+                cursor.execute('''
+                    SELECT * FROM daily_reports 
+                    WHERE user_id = %s AND report_date = %s
+                ''', (user_id, report_date))
+                result = cursor.fetchone()
+                return dict(result) if result else None
+        except Exception as e:
+            logger.error(f"日報取得エラー: {e}")
+            return None
+
+class PostgreSQLTaskRepository:
+    """PostgreSQL用タスクリポジトリ"""
+    
+    def __init__(self, db_manager: PostgreSQLManager):
+        self.db_manager = db_manager
+    
+    def create_task(self, user_id: int, title: str, description: str = '', 
+                   priority: str = 'medium', due_date: str = None) -> Optional[int]:
+        """タスクを作成"""
+        try:
+            with self.db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    INSERT INTO tasks (user_id, title, description, priority, due_date)
+                    VALUES (%s, %s, %s, %s, %s)
+                    RETURNING id
+                ''', (user_id, title, description, priority, due_date))
+                
+                result = cursor.fetchone()
+                return result[0] if result else None
+        except Exception as e:
+            logger.error(f"タスク作成エラー: {e}")
+            return None
+    
+    def get_user_tasks(self, user_id: int, status: str = None) -> List[Dict[str, Any]]:
+        """ユーザーのタスクを取得"""
+        try:
+            with self.db_manager.get_connection() as conn:
+                cursor = conn.cursor(cursor_factory=RealDictCursor)
+                if status:
+                    cursor.execute('SELECT * FROM tasks WHERE user_id = %s AND status = %s ORDER BY created_at DESC', 
+                                 (user_id, status))
+                else:
+                    cursor.execute('SELECT * FROM tasks WHERE user_id = %s ORDER BY created_at DESC', (user_id,))
+                return [dict(row) for row in cursor.fetchall()]
+        except Exception as e:
+            logger.error(f"タスク取得エラー: {e}")
+            return []
+
+class PostgreSQLAttendanceRepository:
+    """PostgreSQL用出退勤リポジトリ"""
+    
+    def __init__(self, db_manager: PostgreSQLManager):
+        self.db_manager = db_manager
+    
+    def clock_in(self, user_id: int, work_date: str = None) -> bool:
+        """出勤記録"""
+        if not work_date:
+            work_date = date.today().isoformat()
+        
+        try:
+            with self.db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    INSERT INTO attendance (user_id, work_date, clock_in_time, status)
+                    VALUES (%s, %s, %s, %s)
+                    ON CONFLICT (user_id, work_date) DO UPDATE SET
+                        clock_in_time = EXCLUDED.clock_in_time,
+                        status = EXCLUDED.status
+                ''', (user_id, work_date, datetime.now(), 'present'))
+                return True
+        except Exception as e:
+            logger.error(f"出勤記録エラー: {e}")
+            return False
+    
+    def clock_out(self, user_id: int, work_date: str = None) -> bool:
+        """退勤記録"""
+        if not work_date:
+            work_date = date.today().isoformat()
+        
+        try:
+            with self.db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    UPDATE attendance 
+                    SET clock_out_time = %s, status = %s
+                    WHERE user_id = %s AND work_date = %s
+                ''', (datetime.now(), 'absent', user_id, work_date))
+                return cursor.rowcount > 0
+        except Exception as e:
+            logger.error(f"退勤記録エラー: {e}")
+            return False
+
 # グローバルインスタンス
-postgres_db_manager = PostgreSQLManager()
-postgres_user_repo = PostgreSQLUserRepository(postgres_db_manager) 
+db_manager = PostgreSQLManager()
+user_repo = PostgreSQLUserRepository(db_manager)
+daily_report_repo = PostgreSQLDailyReportRepository(db_manager)
+task_repo = PostgreSQLTaskRepository(db_manager)
+attendance_repo = PostgreSQLAttendanceRepository(db_manager) 

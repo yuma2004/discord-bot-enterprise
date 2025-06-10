@@ -2,7 +2,11 @@ import discord
 from discord.ext import commands
 from datetime import datetime, date
 import logging
-from database import user_repo, task_repo
+import os
+if os.getenv('DATABASE_URL') and 'postgres' in os.getenv('DATABASE_URL'):
+    from database_postgres import user_repo, task_repo
+else:
+    from database import user_repo, task_repo
 
 logger = logging.getLogger(__name__)
 

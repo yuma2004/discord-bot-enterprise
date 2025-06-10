@@ -8,7 +8,7 @@ from config import Config
 # データベースの動的選択（Supabase対応）
 if os.getenv('DATABASE_URL') and 'postgres' in os.getenv('DATABASE_URL'):
     try:
-        from database_postgres import postgres_db_manager as db_manager
+        from database_postgres import db_manager
         DB_TYPE = "PostgreSQL"
     except ImportError:
         from database import db_manager

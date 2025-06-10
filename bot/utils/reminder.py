@@ -4,7 +4,11 @@ from datetime import datetime, time, date
 import pytz
 import discord
 from discord.ext import commands, tasks
-from database import user_repo, daily_report_repo, task_repo
+import os
+if os.getenv('DATABASE_URL') and 'postgres' in os.getenv('DATABASE_URL'):
+    from database_postgres import user_repo, daily_report_repo, task_repo
+else:
+    from database import user_repo, daily_report_repo, task_repo
 from config import Config
 
 logger = logging.getLogger(__name__)

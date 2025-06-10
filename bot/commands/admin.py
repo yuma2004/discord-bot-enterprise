@@ -2,7 +2,11 @@ import discord
 from discord.ext import commands
 from datetime import datetime, date, timedelta
 import logging
-from database import user_repo, daily_report_repo, task_repo, attendance_repo, db_manager
+import os
+if os.getenv('DATABASE_URL') and 'postgres' in os.getenv('DATABASE_URL'):
+    from database_postgres import user_repo, daily_report_repo, task_repo, attendance_repo, db_manager
+else:
+    from database import user_repo, daily_report_repo, task_repo, attendance_repo, db_manager
 import json
 import os
 from typing import Dict, Any
