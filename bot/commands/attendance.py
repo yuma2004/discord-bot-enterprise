@@ -211,14 +211,32 @@ class AttendanceCog(commands.Cog):
     
     def __init__(self, bot):
         self.bot = bot
+        self.attendance_channel_id = None  # 出退勤チャンネルのID
+        self.last_panel_message = None    # 最後のパネルメッセージ
     
     @commands.command(name='出退勤', aliases=['attendance', 'punch'])
     async def attendance_panel(self, ctx):
-        """出退勤管理パネルを表示"""
+        """出退勤管理パネルを表示（常に最新メッセージとして表示）"""
+        # 出退勤チャンネルかどうかチェック
+        if ctx.channel.name == '出退勤':
+            # Botの古いメッセージを削除（最新10件をチェック）
+            async for message in ctx.channel.history(limit=10):
+                if message.author == self.bot.user and message.embeds:
+                    try:
+                        embed = message.embeds[0]
+                        if embed.title and "出退勤管理システム" in embed.title:
+                            await message.delete()
+                            logger.info("古い出退勤パネルを削除しました")
+                    except discord.errors.NotFound:
+                        pass  # メッセージが既に削除されている
+                    except Exception as e:
+                        logger.warning(f"メッセージ削除エラー: {e}")
+        
         embed = discord.Embed(
             title="🕐 出退勤管理システム",
             description="下のボタンを使って出退勤を記録してください",
-            color=discord.Color.blue()
+            color=discord.Color.blue(),
+            timestamp=datetime.now()
         )
         
         embed.add_field(
@@ -238,8 +256,16 @@ class AttendanceCog(commands.Cog):
             inline=False
         )
         
+        embed.set_footer(text="📌 このパネルは常に最新の状態で表示されます")
+        
         view = AttendanceView()
-        await ctx.send(embed=embed, view=view)
+        message = await ctx.send(embed=embed, view=view)
+        
+        # 出退勤チャンネルの場合は情報を保存
+        if ctx.channel.name == '出退勤':
+            self.attendance_channel_id = ctx.channel.id
+            self.last_panel_message = message
+            logger.info(f"出退勤パネルを更新しました: {message.id}")
     
     @commands.command(name='勤怠確認', aliases=['attendance_status', 'status'])
     async def check_attendance(self, ctx, target_date: str = None):

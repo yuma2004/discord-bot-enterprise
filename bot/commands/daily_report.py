@@ -138,15 +138,16 @@ class DailyReportCog(commands.Cog):
     
     @commands.command(name='日報テンプレート', aliases=['nippo_template'])
     async def daily_report_template(self, ctx):
-        """日報のテンプレートを表示する"""
+        """日報のテンプレートを表示する（DMで送信）"""
         await self._show_daily_report_template(ctx)
     
     async def _show_daily_report_template(self, ctx):
-        """日報テンプレートを表示"""
+        """日報テンプレートを表示（DMで送信）"""
         embed = discord.Embed(
             title="📝 日報テンプレート",
             description="以下のテンプレートを参考に日報を作成してください",
-            color=discord.Color.blue()
+            color=discord.Color.blue(),
+            timestamp=datetime.now()
         )
         
         template = """```
@@ -167,18 +168,45 @@ class DailyReportCog(commands.Cog):
 ```"""
         
         embed.add_field(
-            name="テンプレート例",
+            name="📋 テンプレート例",
             value=template,
             inline=False
         )
         
         embed.add_field(
-            name="使用方法",
-            value="`!日報 [内容]` または `!nippo [内容]`",
+            name="💡 使用方法",
+            value="`!日報 [内容]` または `!nippo [内容]`\n"
+                  "・このテンプレートをコピーして使用してください\n"
+                  "・各項目は必要に応じて編集してください\n"
+                  "・DMから直接でも日報提出できます",
             inline=False
         )
         
-        await ctx.send(embed=embed)
+        embed.add_field(
+            name="🚀 クイック日報",
+            value="DMで `!日報 今日の作業内容` と送信すれば\n"
+                  "サーバーに戻らずに日報提出できます！",
+            inline=False
+        )
+        
+        embed.set_footer(text="💌 テンプレートをDMでお送りしました | DMから直接日報提出可能")
+        
+        try:
+            # DMでテンプレートを送信
+            await ctx.author.send(embed=embed)
+            
+            # 元のチャンネルには簡潔な確認メッセージを送信
+            if ctx.guild:  # サーバー内からの呼び出しの場合
+                confirm_embed = discord.Embed(
+                    title="💌 DMを確認してください",
+                    description="日報テンプレートをDMでお送りしました\n**DMから直接日報提出も可能です！**",
+                    color=discord.Color.green()
+                )
+                await ctx.send(embed=confirm_embed, delete_after=10)
+        except discord.Forbidden:
+            # DMが送信できない場合はチャンネルに送信
+            embed.set_footer(text="⚠️ DMが送信できないため、こちらに表示しています")
+            await ctx.send(embed=embed)
     
     def _parse_report_content(self, content: str) -> dict:
         """日報内容を解析して構造化データに変換"""
