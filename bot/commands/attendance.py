@@ -5,12 +5,21 @@ import logging
 import os
 import csv
 import io
+import pytz
+from config import Config
 if os.getenv('DATABASE_URL') and 'postgres' in os.getenv('DATABASE_URL'):
     from database_postgres import user_repo, attendance_repo
 else:
     from database import user_repo, attendance_repo
 
 logger = logging.getLogger(__name__)
+
+# 日本時間のタイムゾーン設定
+JST = pytz.timezone(Config.TIMEZONE)
+
+def now_jst():
+    """日本時間での現在時刻を取得"""
+    return datetime.now(JST)
 
 class AttendanceView(discord.ui.View):
     """出退勤管理用のボタンUI"""
@@ -329,7 +338,7 @@ class AttendanceCog(commands.Cog):
             embed = discord.Embed(
                 title=f"📊 勤怠状況 - {target_date}",
                 color=discord.Color.blue(),
-                timestamp=datetime.now()
+                timestamp=now_jst()
             )
             
             # ステータス表示
@@ -486,7 +495,7 @@ class AttendanceCog(commands.Cog):
             embed = discord.Embed(
                 title=f"📊 月次勤怠レポート - {year}年{month}月",
                 color=discord.Color.blue(),
-                timestamp=datetime.now()
+                timestamp=now_jst()
             )
             
             embed.add_field(
@@ -548,9 +557,9 @@ class AttendanceCog(commands.Cog):
         await ctx.defer()
         
         try:
-            # デフォルトは今月
+            # デフォルトは今月（日本時間ベース）
             if not start_date or not end_date:
-                now = datetime.now()
+                now = now_jst()
                 start_date = f"{now.year}-{now.month:02d}-01"
                 # 今月末日を計算
                 if now.month == 12:
@@ -663,7 +672,7 @@ class AttendanceCog(commands.Cog):
                 title="📊 勤怠データCSVエクスポート完了",
                 description=f"勤怠データをCSVファイルで出力しました",
                 color=discord.Color.green(),
-                timestamp=datetime.now()
+                timestamp=now_jst()
             )
             
             embed.add_field(

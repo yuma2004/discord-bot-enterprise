@@ -2,9 +2,17 @@ import sqlite3
 import logging
 from datetime import datetime, date
 from typing import List, Dict, Any, Optional
+import pytz
 from config import Config
 
 logger = logging.getLogger(__name__)
+
+# 日本時間のタイムゾーン設定
+JST = pytz.timezone(Config.TIMEZONE)
+
+def now_jst():
+    """日本時間での現在時刻を取得"""
+    return datetime.now(JST)
 
 class DatabaseManager:
     """データベース操作管理クラス"""
@@ -285,7 +293,7 @@ class AttendanceRepository:
         if work_date is None:
             work_date = date.today().isoformat()
         
-        now = datetime.now()
+        now = now_jst()
         
         with self.db_manager.get_connection() as conn:
             cursor = conn.cursor()
@@ -302,7 +310,7 @@ class AttendanceRepository:
         if work_date is None:
             work_date = date.today().isoformat()
         
-        now = datetime.now()
+        now = now_jst()
         
         with self.db_manager.get_connection() as conn:
             cursor = conn.cursor()
@@ -325,6 +333,14 @@ class AttendanceRepository:
                 else:
                     clock_in = record['clock_in_time']
                 
+                # タイムゾーンを統一
+                if clock_in.tzinfo is None:
+                    clock_in = JST.localize(clock_in)
+                if now.tzinfo is None:
+                    now = JST.localize(now)
+                elif now.tzinfo != JST:
+                    now = now.astimezone(JST)
+                
                 total_hours = (now - clock_in).total_seconds() / 3600
                 
                 # 休憩時間を引く
@@ -338,6 +354,12 @@ class AttendanceRepository:
                         break_end = datetime.fromisoformat(record['break_end_time'])
                     else:
                         break_end = record['break_end_time']
+                    
+                    # 休憩時間もタイムゾーン統一
+                    if break_start.tzinfo is None:
+                        break_start = JST.localize(break_start)
+                    if break_end.tzinfo is None:
+                        break_end = JST.localize(break_end)
                     
                     break_hours = (break_end - break_start).total_seconds() / 3600
                     total_hours -= break_hours
@@ -366,7 +388,7 @@ class AttendanceRepository:
         if work_date is None:
             work_date = date.today().isoformat()
         
-        now = datetime.now()
+        now = now_jst()
         
         with self.db_manager.get_connection() as conn:
             cursor = conn.cursor()
@@ -385,7 +407,7 @@ class AttendanceRepository:
         if work_date is None:
             work_date = date.today().isoformat()
         
-        now = datetime.now()
+        now = now_jst()
         
         with self.db_manager.get_connection() as conn:
             cursor = conn.cursor()

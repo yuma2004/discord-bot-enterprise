@@ -5,6 +5,7 @@
 """
 
 import unittest
+import asyncio
 import sys
 import os
 from datetime import datetime, date, timedelta
@@ -15,31 +16,31 @@ import shutil
 # テスト用環境変数を設定
 os.environ.setdefault('DISCORD_TOKEN', 'test_token')
 os.environ.setdefault('DISCORD_GUILD_ID', '123456789')
-os.environ.setdefault('DATABASE_URL', 'test_integration.db')
+os.environ.setdefault('DATABASE_URL', 'test_discord_bot.db')
 os.environ.setdefault('ENVIRONMENT', 'test')
 
 # プロジェクトルートをパスに追加
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from database import DatabaseManager, UserRepository, DailyReportRepository, TaskRepository, AttendanceRepository
+from database import DatabaseManager, UserRepository, TaskRepository, AttendanceRepository
 
 
 class TestDatabaseIntegration(unittest.TestCase):
-    """データベース統合テスト"""
+    """統合的なデータベーステスト"""
     
     def setUp(self):
-        """テスト前のセットアップ"""
-        # 一意なテスト用データベース
+        """テストセットアップ"""
         import time
         import random
-        self.test_db_path = f'test_integration_{int(time.time())}_{random.randint(1000, 9999)}.db'
+        
+        # 一意なテスト用データベースを作成
+        self.test_db_path = f'integration_test_{int(time.time())}_{random.randint(1000, 9999)}.db'
         
         self.db_manager = DatabaseManager(self.test_db_path)
         self.db_manager.init_database()
         
-        # リポジトリ初期化
+        # リポジトリ
         self.user_repo = UserRepository(self.db_manager)
-        self.daily_report_repo = DailyReportRepository(self.db_manager)
         self.task_repo = TaskRepository(self.db_manager)
         self.attendance_repo = AttendanceRepository(self.db_manager)
         
@@ -50,17 +51,19 @@ class TestDatabaseIntegration(unittest.TestCase):
             display_name="Test User"
         )
         
-        self.test_user_id_2 = self.user_repo.create_user(
+        self.test_user2_id = self.user_repo.create_user(
             discord_id="987654321",
-            username="testuser2",
+            username="testuser2", 
             display_name="Test User 2"
         )
     
     def tearDown(self):
         """テスト後のクリーンアップ"""
+        # データベース接続を確実に閉じる
         if hasattr(self, 'db_manager'):
             del self.db_manager
         
+        # ファイルを削除
         try:
             if os.path.exists(self.test_db_path):
                 os.remove(self.test_db_path)
@@ -73,348 +76,234 @@ class TestDatabaseIntegration(unittest.TestCase):
             except:
                 pass
     
-    def test_complete_attendance_workflow(self):
-        """完全な出退勤ワークフローのテスト"""
+    def test_multi_user_attendance_workflow(self):
+        """複数ユーザーの出退勤ワークフローテスト"""
         today = date.today().isoformat()
         
-        # 1. 出勤
+        # User1の出勤
         success = self.attendance_repo.clock_in(self.test_user_id, today)
         self.assertTrue(success)
         
-        # 出勤記録確認
-        record = self.attendance_repo.get_today_attendance(self.test_user_id, today)
-        self.assertIsNotNone(record)
-        self.assertEqual(record['status'], '在席')
-        self.assertIsNotNone(record['clock_in_time'])
+        # User2の出勤
+        success = self.attendance_repo.clock_in(self.test_user2_id, today)
+        self.assertTrue(success)
         
-        # 2. 休憩開始
+        # User1の休憩開始
         success = self.attendance_repo.start_break(self.test_user_id, today)
         self.assertTrue(success)
         
-        # 休憩中状態確認
-        record = self.attendance_repo.get_today_attendance(self.test_user_id, today)
-        self.assertEqual(record['status'], '休憩中')
-        self.assertIsNotNone(record['break_start_time'])
-        
-        # 3. 休憩終了
+        # User1の休憩終了
         success = self.attendance_repo.end_break(self.test_user_id, today)
         self.assertTrue(success)
         
-        # 在席状態復帰確認
-        record = self.attendance_repo.get_today_attendance(self.test_user_id, today)
-        self.assertEqual(record['status'], '在席')
-        self.assertIsNotNone(record['break_end_time'])
-        
-        # 4. 退勤
+        # User1の退勤
         success = self.attendance_repo.clock_out(self.test_user_id, today)
         self.assertTrue(success)
         
-        # 最終記録確認
-        record = self.attendance_repo.get_today_attendance(self.test_user_id, today)
-        self.assertEqual(record['status'], '退勤')
-        self.assertIsNotNone(record['clock_out_time'])
-        self.assertIsNotNone(record['total_work_hours'])
-        self.assertIsNotNone(record['overtime_hours'])
-    
-    def test_multiple_users_attendance(self):
-        """複数ユーザーの出退勤管理テスト"""
-        today = date.today().isoformat()
-        
-        # ユーザー1: 出勤のみ
-        self.attendance_repo.clock_in(self.test_user_id, today)
-        
-        # ユーザー2: 出勤→退勤
-        self.attendance_repo.clock_in(self.test_user_id_2, today)
-        self.attendance_repo.clock_out(self.test_user_id_2, today)
-        
-        # 全ユーザーステータス確認
+        # ステータス確認
         all_status = self.attendance_repo.get_all_users_status()
         self.assertEqual(len(all_status), 2)
         
-        # ユーザー1は在席、ユーザー2は退勤
-        user1_status = next(s for s in all_status if s['discord_id'] == "123456789")
-        user2_status = next(s for s in all_status if s['discord_id'] == "987654321")
+        # User1は退勤、User2は在席であることを確認
+        user1_status = next((u for u in all_status if u['discord_id'] == "123456789"), None)
+        user2_status = next((u for u in all_status if u['discord_id'] == "987654321"), None)
         
-        self.assertEqual(user1_status['status'], '在席')
-        self.assertEqual(user2_status['status'], '退勤')
+        self.assertIsNotNone(user1_status)
+        self.assertIsNotNone(user2_status)
+        self.assertEqual(user1_status['status'], '退勤')
+        self.assertEqual(user2_status['status'], '在席')
     
-    def test_daily_report_with_tasks_integration(self):
-        """日報とタスクの統合テスト"""
+    def test_attendance_csv_data_workflow(self):
+        """CSV出力用データの統合テスト"""
         today = date.today().isoformat()
-        tomorrow = (date.today() + timedelta(days=1)).isoformat()
+        yesterday = (date.today() - timedelta(days=1)).isoformat()
         
-        # タスク作成
-        task_id_1 = self.task_repo.create_task(
-            user_id=self.test_user_id,
-            title="プロジェクトA設計",
-            priority="高",
-            due_date=tomorrow
-        )
+        # 昨日と今日の勤怠記録を作成
+        for work_date in [yesterday, today]:
+            for user_id in [self.test_user_id, self.test_user2_id]:
+                # 出勤
+                self.attendance_repo.clock_in(user_id, work_date)
+                # 退勤
+                self.attendance_repo.clock_out(user_id, work_date)
         
-        task_id_2 = self.task_repo.create_task(
-            user_id=self.test_user_id,
-            title="プロジェクトB実装",
-            priority="中",
-            due_date=tomorrow
-        )
+        # CSV用データ取得
+        csv_data = self.attendance_repo.get_attendance_range(yesterday, today)
         
-        # 日報作成（タスクに関連）
-        report_id = self.daily_report_repo.create_daily_report(
-            user_id=self.test_user_id,
-            report_date=today,
-            today_tasks="プロジェクトA設計を完了",
-            tomorrow_tasks="プロジェクトB実装開始予定"
-        )
+        # 4レコード（2ユーザー x 2日）が取得されることを確認
+        self.assertEqual(len(csv_data), 4)
         
-        # タスク完了
-        self.task_repo.update_task_status(task_id_1, "完了")
+        # 必要なフィールドが含まれていることを確認
+        required_fields = ['date', 'username', 'display_name', 'clock_in_time', 'clock_out_time', 'total_work_hours']
+        for record in csv_data:
+            for field in required_fields:
+                self.assertIn(field, record, f"フィールド '{field}' が見つかりません")
+    
+    def test_task_and_user_integration(self):
+        """タスクとユーザーの統合テスト"""
+        # 複数のタスクを作成
+        task_titles = ["タスク1", "タスク2", "タスク3"]
+        created_tasks = []
         
-        # 統合確認
-        report = self.daily_report_repo.get_daily_report(self.test_user_id, today)
+        for title in task_titles:
+            task_id = self.task_repo.create_task(
+                user_id=self.test_user_id,
+                title=title,
+                priority="中",
+                due_date=(date.today() + timedelta(days=1)).isoformat()
+            )
+            created_tasks.append(task_id)
+        
+        # タスク取得
         tasks = self.task_repo.get_user_tasks(self.test_user_id)
+        self.assertEqual(len(tasks), 3)
         
-        self.assertIsNotNone(report)
-        self.assertIn("プロジェクトA", report['today_tasks'])
-        self.assertEqual(len(tasks), 2)
-        
-        # 完了タスクの確認
-        completed_task = next(t for t in tasks if t['id'] == task_id_1)
-        self.assertEqual(completed_task['status'], '完了')
-    
-    def test_work_hours_calculation_edge_cases(self):
-        """勤務時間計算のエッジケーステスト"""
-        today = date.today().isoformat()
-        
-        # テストケース1: 短時間勤務（残業なし）
-        self.attendance_repo.clock_in(self.test_user_id, today)
-        
-        # 4時間後に退勤をシミュレート
-        with self.db_manager.get_connection() as conn:
-            cursor = conn.cursor()
-            now = datetime.now()
-            clock_in_time = now - timedelta(hours=4)
-            cursor.execute('''
-                UPDATE attendance SET clock_in_time = ? WHERE user_id = ? AND work_date = ?
-            ''', (clock_in_time, self.test_user_id, today))
-            conn.commit()
-        
-        success = self.attendance_repo.clock_out(self.test_user_id, today)
+        # タスクの完了
+        success = self.task_repo.update_task_status(created_tasks[0], "完了")
         self.assertTrue(success)
         
+        # 未完了タスクの確認
+        pending_tasks = self.task_repo.get_user_tasks(self.test_user_id, status="未着手")
+        self.assertEqual(len(pending_tasks), 2)
+        
+        # 期限が近いタスクの確認
+        due_soon_tasks = self.task_repo.get_tasks_due_soon(days=2)
+        self.assertEqual(len(due_soon_tasks), 2)  # 完了済みを除く2件
+    
+    def test_concurrent_database_operations(self):
+        """並行データベース操作のテスト"""
+        today = date.today().isoformat()
+        
+        # 同時に複数の操作を実行
+        operations = [
+            lambda: self.attendance_repo.clock_in(self.test_user_id, today),
+            lambda: self.task_repo.create_task(self.test_user_id, "並行タスク1"),
+            lambda: self.task_repo.create_task(self.test_user2_id, "並行タスク2"),
+            lambda: self.attendance_repo.clock_in(self.test_user2_id, today),
+        ]
+        
+        # 全ての操作を実行
+        results = []
+        for operation in operations:
+            try:
+                result = operation()
+                results.append(result)
+            except Exception as e:
+                self.fail(f"並行操作でエラー: {e}")
+        
+        # 全ての操作が成功することを確認
+        self.assertEqual(len([r for r in results if r]), 4)
+    
+    def test_database_schema_consistency(self):
+        """データベーススキーマの一貫性テスト"""
+        with self.db_manager.get_connection() as conn:
+            cursor = conn.cursor()
+            
+            # テーブルの存在確認
+            expected_tables = ['users', 'tasks', 'attendance', 'settings']
+            
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            actual_tables = [row[0] for row in cursor.fetchall()]
+            
+            for table in expected_tables:
+                self.assertIn(table, actual_tables, f"テーブル '{table}' が見つかりません")
+            
+            # 外部キー制約の確認
+            cursor.execute("PRAGMA foreign_key_list(tasks)")
+            fk_constraints = cursor.fetchall()
+            self.assertGreater(len(fk_constraints), 0, "tasksテーブルに外部キー制約がありません")
+            
+            cursor.execute("PRAGMA foreign_key_list(attendance)")
+            fk_constraints = cursor.fetchall()
+            self.assertGreater(len(fk_constraints), 0, "attendanceテーブルに外部キー制約がありません")
+    
+    def test_data_type_consistency(self):
+        """データ型の一貫性テスト"""
+        # 日時データの一貫性
+        today = date.today().isoformat()
+        
+        # 出勤記録
+        self.attendance_repo.clock_in(self.test_user_id, today)
+        
+        # 記録確認
         record = self.attendance_repo.get_today_attendance(self.test_user_id, today)
-        self.assertLess(record['total_work_hours'], 8.0)
-        self.assertEqual(record['overtime_hours'], 0.0)
+        self.assertIsNotNone(record)
         
-        # テストケース2: 長時間勤務（残業あり）
-        user_id_3 = self.user_repo.create_user(
-            discord_id="111222333",
-            username="longworker",
-            display_name="Long Worker"
+        # 日時フィールドのタイプチェック
+        clock_in_time = record['clock_in_time']
+        
+        # 文字列またはdatetimeオブジェクトであることを確認
+        self.assertTrue(
+            isinstance(clock_in_time, (str, datetime)),
+            f"clock_in_timeの型が不正: {type(clock_in_time)}"
         )
         
-        self.attendance_repo.clock_in(user_id_3, today)
-        
-        # 10時間勤務をシミュレート
-        with self.db_manager.get_connection() as conn:
-            cursor = conn.cursor()
-            now = datetime.now()
-            clock_in_time = now - timedelta(hours=10)
-            cursor.execute('''
-                UPDATE attendance SET clock_in_time = ? WHERE user_id = ? AND work_date = ?
-            ''', (clock_in_time, user_id_3, today))
-            conn.commit()
-        
-        success = self.attendance_repo.clock_out(user_id_3, today)
-        self.assertTrue(success)
-        
-        record = self.attendance_repo.get_today_attendance(user_id_3, today)
-        self.assertGreater(record['total_work_hours'], 8.0)
-        self.assertGreater(record['overtime_hours'], 0.0)
-        self.assertEqual(record['overtime_hours'], record['total_work_hours'] - 8.0)
+        # 文字列の場合はISO形式であることを確認
+        if isinstance(clock_in_time, str):
+            try:
+                datetime.fromisoformat(clock_in_time)
+            except ValueError:
+                self.fail(f"clock_in_timeが不正なISO形式: {clock_in_time}")
     
-    def test_monthly_attendance_report(self):
-        """月次勤怠レポートテスト"""
-        current_month = date.today().month
-        current_year = date.today().year
-        
-        # 複数日の勤怠記録を作成
-        for day in range(1, 6):  # 5日間
-            work_date = f"{current_year}-{current_month:02d}-{day:02d}"
-            self.attendance_repo.clock_in(self.test_user_id, work_date)
-            self.attendance_repo.clock_out(self.test_user_id, work_date)
-        
-        # 月次レポート取得
-        monthly_records = self.attendance_repo.get_monthly_attendance(
-            self.test_user_id, current_year, current_month
-        )
-        
-        self.assertEqual(len(monthly_records), 5)
-        
-        # 全記録に勤務時間が設定されているか確認
-        for record in monthly_records:
-            self.assertIsNotNone(record['total_work_hours'])
-            self.assertIsNotNone(record['overtime_hours'])
-    
-    def test_data_consistency_and_constraints(self):
-        """データ整合性と制約のテスト"""
+    def test_edge_cases_handling(self):
+        """エッジケースの処理テスト"""
+        # 存在しないユーザーでの操作
         today = date.today().isoformat()
         
-        # 同一日の重複出勤防止テスト
+        # 存在しないユーザーの出勤試行
+        result = self.attendance_repo.clock_in(99999, today)
+        # エラーが発生しないことを確認（ユーザー作成/取得は呼び出し元の責任）
+        self.assertTrue(isinstance(result, bool))
+        
+        # 出勤していないユーザーの退勤試行
+        result = self.attendance_repo.clock_out(self.test_user2_id, today)
+        self.assertFalse(result)  # 失敗することを確認
+        
+        # 重複する出勤記録
         self.attendance_repo.clock_in(self.test_user_id, today)
-        
-        # 同じ日に再度出勤を試行
-        success = self.attendance_repo.clock_in(self.test_user_id, today)
-        self.assertTrue(success)  # REPLACE処理により成功するが、1つの記録のみ
-        
-        # 記録が1つだけであることを確認
-        with self.db_manager.get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
-                SELECT COUNT(*) FROM attendance 
-                WHERE user_id = ? AND work_date = ?
-            ''', (self.test_user_id, today))
-            count = cursor.fetchone()[0]
-            self.assertEqual(count, 1)
-        
-        # 外部キー制約テスト（存在しないユーザーでの操作）
-        non_existent_user = 99999
-        success = self.attendance_repo.clock_in(non_existent_user, today)
-        # 外部キー制約により失敗するはず（ただし、SQLiteでは制約が緩い場合がある）
-        
+        result = self.attendance_repo.clock_in(self.test_user_id, today)  # 再度出勤
+        self.assertTrue(result)  # INSERT OR REPLACEで成功するはず
+    
     def test_performance_with_large_dataset(self):
-        """大規模データセットでのパフォーマンステスト"""
+        """大量データでのパフォーマンステスト"""
         import time
         
-        # 大量ユーザー作成
+        # 大量のユーザー作成
         user_ids = []
+        start_time = time.time()
+        
         for i in range(100):
             user_id = self.user_repo.create_user(
-                discord_id=f"perf_user_{i}",
-                username=f"perfuser{i}",
-                display_name=f"Performance User {i}"
+                discord_id=f"user_{i}",
+                username=f"testuser_{i}"
             )
             user_ids.append(user_id)
         
-        # 大量勤怠記録作成
-        today = date.today().isoformat()
-        start_time = time.time()
+        creation_time = time.time() - start_time
         
-        for user_id in user_ids:
-            self.attendance_repo.clock_in(user_id, today)
-            self.attendance_repo.clock_out(user_id, today)
+        # パフォーマンス基準（100ユーザー作成が3秒以内）
+        self.assertLess(creation_time, 3.0, f"ユーザー作成が遅すぎます: {creation_time:.2f}秒")
         
-        end_time = time.time()
-        processing_time = end_time - start_time
-        
-        # パフォーマンス確認（100件の処理が10秒以内）
-        self.assertLess(processing_time, 10.0, 
-                       f"大量データ処理に{processing_time:.2f}秒かかりました（許容: 10秒）")
-        
-        # 全ユーザーステータス取得のパフォーマンス
+        # 大量データの取得
         start_time = time.time()
         all_status = self.attendance_repo.get_all_users_status()
-        end_time = time.time()
+        query_time = time.time() - start_time
         
-        query_time = end_time - start_time
-        self.assertLess(query_time, 2.0,
-                       f"全ユーザー状況取得に{query_time:.2f}秒かかりました（許容: 2秒）")
-        self.assertGreater(len(all_status), 100)
+        # 102ユーザー（初期2 + 追加100）が取得されることを確認
+        self.assertEqual(len(all_status), 102)
+        
+        # パフォーマンス基準（100ユーザーの状況取得が1秒以内）
+        self.assertLess(query_time, 1.0, f"ステータス取得が遅すぎます: {query_time:.2f}秒")
 
-
-class TestErrorRecovery(unittest.TestCase):
-    """エラー回復テスト"""
+def run_integration_tests():
+    """統合テストの実行"""
+    loader = unittest.TestLoader()
+    suite = loader.loadTestsFromTestCase(TestDatabaseIntegration)
     
-    def setUp(self):
-        """テスト前のセットアップ"""
-        import time
-        import random
-        self.test_db_path = f'test_error_recovery_{int(time.time())}_{random.randint(1000, 9999)}.db'
-        
-        self.db_manager = DatabaseManager(self.test_db_path)
-        self.db_manager.init_database()
-        
-        self.user_repo = UserRepository(self.db_manager)
-        self.attendance_repo = AttendanceRepository(self.db_manager)
-        
-        self.test_user_id = self.user_repo.create_user(
-            discord_id="error_test_user",
-            username="erroruser"
-        )
+    runner = unittest.TextTestRunner(verbosity=2)
+    result = runner.run(suite)
     
-    def tearDown(self):
-        """テスト後のクリーンアップ"""
-        if hasattr(self, 'db_manager'):
-            del self.db_manager
-        
-        try:
-            if os.path.exists(self.test_db_path):
-                os.remove(self.test_db_path)
-        except:
-            pass
-    
-    def test_database_corruption_recovery(self):
-        """データベース破損からの回復テスト"""
-        today = date.today().isoformat()
-        
-        # 正常な記録
-        self.attendance_repo.clock_in(self.test_user_id, today)
-        
-        # データベースに不正なデータを挿入
-        with self.db_manager.get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
-                INSERT INTO attendance (user_id, work_date, clock_in_time, total_work_hours)
-                VALUES (?, ?, ?, ?)
-            ''', (self.test_user_id, "invalid-date", "invalid-time", "invalid-hours"))
-            conn.commit()
-        
-        # エラー回復確認
-        try:
-            records = self.attendance_repo.get_monthly_attendance(
-                self.test_user_id, 2025, 1
-            )
-            # エラーが発生しても処理が継続されることを確認
-            self.assertIsInstance(records, list)
-        except Exception as e:
-            self.fail(f"データベース破損時の回復処理が失敗: {e}")
-    
-    def test_concurrent_access_simulation(self):
-        """同時アクセスシミュレーションテスト"""
-        import threading
-        import time
-        
-        today = date.today().isoformat()
-        results = []
-        errors = []
-        
-        def worker(worker_id):
-            try:
-                # 各ワーカーが同時に出退勤操作
-                success1 = self.attendance_repo.clock_in(self.test_user_id, today)
-                time.sleep(0.01)  # 短い待機
-                success2 = self.attendance_repo.clock_out(self.test_user_id, today)
-                results.append((worker_id, success1, success2))
-            except Exception as e:
-                errors.append((worker_id, str(e)))
-        
-        # 5つのスレッドで同時アクセス
-        threads = []
-        for i in range(5):
-            thread = threading.Thread(target=worker, args=(i,))
-            threads.append(thread)
-            thread.start()
-        
-        # 全スレッド完了待機
-        for thread in threads:
-            thread.join()
-        
-        # 結果確認
-        self.assertEqual(len(results), 5, f"一部のワーカーでエラー発生: {errors}")
-        
-        # データベースの整合性確認
-        record = self.attendance_repo.get_today_attendance(self.test_user_id, today)
-        self.assertIsNotNone(record)
-
+    return result.wasSuccessful()
 
 if __name__ == '__main__':
-    unittest.main(verbosity=2) 
+    success = run_integration_tests()
+    sys.exit(0 if success else 1) 

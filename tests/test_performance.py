@@ -5,24 +5,27 @@
 """
 
 import unittest
+import asyncio
 import sys
 import os
+import sqlite3
 import time
-from datetime import datetime, date, timedelta
-from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
 import random
+from datetime import datetime, date, timedelta
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# テスト用環境変数を設定
+# テスト用環境変数を設定（他のインポートより前に設定）
 os.environ.setdefault('DISCORD_TOKEN', 'test_token')
 os.environ.setdefault('DISCORD_GUILD_ID', '123456789')
-os.environ.setdefault('DATABASE_URL', 'test_performance.db')
+os.environ.setdefault('DATABASE_URL', 'test_discord_bot.db')
 os.environ.setdefault('ENVIRONMENT', 'test')
 
 # プロジェクトルートをパスに追加
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from database import DatabaseManager, UserRepository, DailyReportRepository, TaskRepository, AttendanceRepository
+from database import DatabaseManager, UserRepository, TaskRepository, AttendanceRepository
+from config import Config
 
 
 class TestDatabasePerformance(unittest.TestCase):
@@ -38,7 +41,6 @@ class TestDatabasePerformance(unittest.TestCase):
         self.db_manager.init_database()
         
         self.user_repo = UserRepository(self.db_manager)
-        self.daily_report_repo = DailyReportRepository(self.db_manager)
         self.task_repo = TaskRepository(self.db_manager)
         self.attendance_repo = AttendanceRepository(self.db_manager)
     

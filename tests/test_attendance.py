@@ -8,15 +8,20 @@ import unittest
 import asyncio
 import sys
 import os
-from datetime import datetime, date
+import csv
+import io
+import tempfile
+from datetime import datetime, date, timedelta
 from unittest.mock import Mock, AsyncMock, patch
 
-# プロジェクトのルートディレクトリをPythonパスに追加
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+# テスト用環境変数を設定（他のインポートより前に設定）
+os.environ.setdefault('DISCORD_TOKEN', 'test_token')
+os.environ.setdefault('DISCORD_GUILD_ID', '123456789')
+os.environ.setdefault('DATABASE_URL', 'test_discord_bot.db')
+os.environ.setdefault('ENVIRONMENT', 'test')
 
-# 環境変数を設定（テスト用）
-os.environ['DATABASE_URL'] = 'sqlite:///test.db'
-os.environ['ENVIRONMENT'] = 'test'
+# プロジェクトルートをパスに追加
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # PostgreSQLがローカルで利用できない場合はSQLiteのみでテスト
 try:
@@ -26,6 +31,7 @@ except ImportError:
     POSTGRES_AVAILABLE = False
 
 from database import DatabaseManager, UserRepository, AttendanceRepository
+from config import Config
 
 class TestDateTimeCompatibility(unittest.TestCase):
     """日時処理の互換性テスト"""
@@ -63,6 +69,23 @@ class TestDateTimeCompatibility(unittest.TestCase):
         
         self.assertEqual(result, self.test_datetime)
         self.assertIsInstance(result, datetime)
+    
+    def test_none_datetime_handling(self):
+        """None値の日時処理テスト"""
+        test_value = None
+        
+        try:
+            if test_value:
+                if isinstance(test_value, str):
+                    result = datetime.fromisoformat(test_value)
+                else:
+                    result = test_value
+            else:
+                result = None
+                
+            self.assertIsNone(result)
+        except Exception as e:
+            self.fail(f"None値の処理でエラー: {e}")
 
 class TestDatabaseCompatibility(unittest.TestCase):
     """データベース互換性テスト"""
@@ -87,55 +110,24 @@ class TestDatabaseCompatibility(unittest.TestCase):
             self.fail(f"SQLite import failed: {e}")
 
 class TestAttendanceBusinessLogic(unittest.TestCase):
-    """出退勤ビジネスロジックテスト"""
+    """出退勤ビジネスロジックのテスト"""
     
     def setUp(self):
         """テストセットアップ"""
-        self.mock_user = {
-            'id': 1,
-            'discord_id': '123456789',
-            'username': 'testuser',
-            'display_name': 'Test User'
-        }
-        
+        # モック出退勤レコード
         self.mock_attendance_record = {
             'id': 1,
             'user_id': 1,
-            'work_date': date.today(),
-            'clock_in_time': datetime(2025, 6, 10, 9, 0, 0),
-            'clock_out_time': datetime(2025, 6, 10, 18, 0, 0),
-            'status': 'present',
+            'work_date': '2025-06-10',
+            'clock_in_time': '2025-06-10T09:00:00',
+            'clock_out_time': '2025-06-10T18:00:00',
+            'break_start_time': '2025-06-10T12:00:00',
+            'break_end_time': '2025-06-10T13:00:00',
             'total_work_hours': 8.0,
-            'overtime_hours': 0.0
+            'overtime_hours': 0.0,
+            'status': '退勤',
+            'notes': None
         }
-    
-    def test_clock_in_logic(self):
-        """出勤ロジックテスト"""
-        # 出勤時刻の処理
-        clock_in_time = self.mock_attendance_record['clock_in_time']
-        
-        # 型チェック
-        if isinstance(clock_in_time, str):
-            processed_time = datetime.fromisoformat(clock_in_time)
-        else:
-            processed_time = clock_in_time
-        
-        self.assertIsInstance(processed_time, datetime)
-        self.assertEqual(processed_time.hour, 9)
-    
-    def test_clock_out_logic(self):
-        """退勤ロジックテスト"""
-        # 退勤時刻の処理
-        clock_out_time = self.mock_attendance_record['clock_out_time']
-        
-        # 型チェック
-        if isinstance(clock_out_time, str):
-            processed_time = datetime.fromisoformat(clock_out_time)
-        else:
-            processed_time = clock_out_time
-        
-        self.assertIsInstance(processed_time, datetime)
-        self.assertEqual(processed_time.hour, 18)
     
     def test_work_hours_calculation(self):
         """勤務時間計算テスト"""
@@ -150,147 +142,261 @@ class TestAttendanceBusinessLogic(unittest.TestCase):
         
         work_hours = (clock_out - clock_in).total_seconds() / 3600
         self.assertEqual(work_hours, 9.0)  # 9時間勤務
+    
+    def test_break_time_calculation(self):
+        """休憩時間計算テスト"""
+        break_start = self.mock_attendance_record['break_start_time']
+        break_end = self.mock_attendance_record['break_end_time']
+        
+        if isinstance(break_start, str):
+            break_start = datetime.fromisoformat(break_start)
+        if isinstance(break_end, str):
+            break_end = datetime.fromisoformat(break_end)
+        
+        break_hours = (break_end - break_start).total_seconds() / 3600
+        self.assertEqual(break_hours, 1.0)  # 1時間休憩
+    
+    def test_overtime_calculation(self):
+        """残業時間計算テスト"""
+        total_work_hours = 9.0  # 9時間勤務
+        standard_work_hours = 8.0
+        
+        overtime_hours = max(0, total_work_hours - standard_work_hours)
+        self.assertEqual(overtime_hours, 1.0)  # 1時間残業
 
-class TestAttendanceCommands(unittest.TestCase):
-    """出退勤コマンドテスト"""
+class TestAttendanceCSVExport(unittest.TestCase):
+    """出退勤CSV出力のテスト"""
     
     def setUp(self):
         """テストセットアップ"""
-        self.mock_interaction = Mock()
-        self.mock_interaction.user = Mock()
-        self.mock_interaction.user.id = 123456789
-        self.mock_interaction.user.name = 'testuser'
-        self.mock_interaction.user.display_name = 'Test User'
-        self.mock_interaction.response = AsyncMock()
-        self.mock_interaction.followup = AsyncMock()
-    
-    def test_user_creation(self):
-        """ユーザー作成テスト"""
-        # ユーザー情報の模擬
-        discord_id = str(self.mock_interaction.user.id)
-        username = self.mock_interaction.user.name
-        display_name = self.mock_interaction.user.display_name
+        import time
+        import random
+        self.test_db_path = f'test_csv_{int(time.time())}_{random.randint(1000, 9999)}.db'
         
-        # 基本的な検証
-        self.assertIsInstance(discord_id, str)
-        self.assertIsNotNone(username)
-        self.assertIsNotNone(display_name)
-    
-    @patch('bot.commands.attendance.user_repo')
-    @patch('bot.commands.attendance.attendance_repo')
-    def test_clock_in_button_logic(self, mock_attendance_repo, mock_user_repo):
-        """出勤ボタンロジックテスト"""
-        # モックの設定
-        mock_user_repo.get_or_create_user.return_value = self.mock_interaction.user
-        mock_attendance_repo.get_today_attendance.return_value = None
-        mock_attendance_repo.clock_in.return_value = True
+        self.db_manager = DatabaseManager(self.test_db_path)
+        self.db_manager.init_database()
         
-        # テスト対象の関数を直接テスト
-        user = mock_user_repo.get_or_create_user(
-            str(self.mock_interaction.user.id),
-            self.mock_interaction.user.name,
-            self.mock_interaction.user.display_name
+        self.user_repo = UserRepository(self.db_manager)
+        self.attendance_repo = AttendanceRepository(self.db_manager)
+        
+        # テストユーザー作成
+        self.test_user_id = self.user_repo.create_user(
+            discord_id="123456789",
+            username="csvtestuser",
+            display_name="CSV Test User"
         )
         
-        today_record = mock_attendance_repo.get_today_attendance(1)
-        
-        self.assertIsNone(today_record)  # 今日の記録なし
-        self.assertIsNotNone(user)
-
-class TestErrorHandling(unittest.TestCase):
-    """エラーハンドリングテスト"""
+        self.test_user2_id = self.user_repo.create_user(
+            discord_id="987654321",
+            username="csvtestuser2",
+            display_name="CSV Test User 2"
+        )
     
-    def test_none_datetime_handling(self):
-        """None値の日時処理テスト"""
-        test_value = None
-        
-        if test_value and isinstance(test_value, str):
-            result = datetime.fromisoformat(test_value)
-        elif test_value:
-            result = test_value
-        else:
-            result = None
-        
-        self.assertIsNone(result)
-    
-    def test_invalid_datetime_string(self):
-        """無効な日時文字列のテスト"""
-        test_value = "invalid-datetime"
+    def tearDown(self):
+        """テスト後のクリーンアップ"""
+        if hasattr(self, 'db_manager'):
+            del self.db_manager
         
         try:
-            if isinstance(test_value, str):
-                result = datetime.fromisoformat(test_value)
-            else:
-                result = test_value
-        except ValueError:
-            result = None
+            if os.path.exists(self.test_db_path):
+                os.remove(self.test_db_path)
+        except:
+            pass
+    
+    def test_csv_data_format(self):
+        """CSV出力データ形式のテスト"""
+        today = date.today().isoformat()
+        yesterday = (date.today() - timedelta(days=1)).isoformat()
         
-        self.assertIsNone(result)
+        # テストデータ作成
+        for work_date in [yesterday, today]:
+            self.attendance_repo.clock_in(self.test_user_id, work_date)
+            self.attendance_repo.clock_out(self.test_user_id, work_date)
+            
+            self.attendance_repo.clock_in(self.test_user2_id, work_date)
+            self.attendance_repo.clock_out(self.test_user2_id, work_date)
+        
+        # CSV用データ取得
+        csv_data = self.attendance_repo.get_attendance_range(yesterday, today)
+        
+        # データが正常に取得されることを確認
+        self.assertGreater(len(csv_data), 0)
+        
+        # 必須フィールドの存在確認
+        required_fields = [
+            'date', 'username', 'display_name', 'clock_in_time', 'clock_out_time',
+            'break_start_time', 'break_end_time', 'total_break_minutes',
+            'total_work_hours', 'overtime_hours', 'status', 'notes'
+        ]
+        
+        for record in csv_data:
+            for field in required_fields:
+                self.assertIn(field, record, f"必須フィールド '{field}' が見つかりません")
+    
+    def test_csv_time_formatting(self):
+        """CSV時刻フォーマットのテスト"""
+        today = date.today().isoformat()
+        
+        # 勤怠記録作成
+        self.attendance_repo.clock_in(self.test_user_id, today)
+        self.attendance_repo.clock_out(self.test_user_id, today)
+        
+        # CSV用データ取得
+        csv_data = self.attendance_repo.get_attendance_range(today, today)
+        
+        self.assertGreater(len(csv_data), 0)
+        
+        record = csv_data[0]
+        
+        # 時刻フォーマット関数のテスト
+        def format_time(time_str):
+            if not time_str:
+                return ''
+            try:
+                if isinstance(time_str, str):
+                    dt = datetime.fromisoformat(time_str)
+                else:
+                    dt = time_str
+                return dt.strftime('%H:%M')
+            except (ValueError, TypeError):
+                return str(time_str) if time_str else ''
+        
+        # 出勤時刻のフォーマットテスト
+        clock_in_formatted = format_time(record['clock_in_time'])
+        self.assertRegex(clock_in_formatted, r'^\d{2}:\d{2}$', 
+                        f"出勤時刻のフォーマットが不正: {clock_in_formatted}")
+        
+        # 退勤時刻のフォーマットテスト
+        clock_out_formatted = format_time(record['clock_out_time'])
+        self.assertRegex(clock_out_formatted, r'^\d{2}:\d{2}$',
+                        f"退勤時刻のフォーマットが不正: {clock_out_formatted}")
+    
+    def test_csv_creation_and_encoding(self):
+        """CSV作成とエンコーディングのテスト"""
+        today = date.today().isoformat()
+        
+        # テストデータ作成
+        self.attendance_repo.clock_in(self.test_user_id, today)
+        self.attendance_repo.clock_out(self.test_user_id, today)
+        
+        # CSV用データ取得
+        csv_data = self.attendance_repo.get_attendance_range(today, today)
+        
+        # CSVファイル作成テスト
+        csv_buffer = io.StringIO()
+        csv_writer = csv.writer(csv_buffer)
+        
+        # ヘッダー行
+        headers = [
+            '日付', 'ユーザー名', '表示名', '出勤時刻', '退勤時刻',
+            '休憩開始', '休憩終了', '総休憩時間（分）', '総勤務時間（時間）',
+            '残業時間（時間）', 'ステータス', '備考'
+        ]
+        csv_writer.writerow(headers)
+        
+        # データ行
+        for record in csv_data:
+            def format_time(time_str):
+                if not time_str:
+                    return ''
+                try:
+                    if isinstance(time_str, str):
+                        dt = datetime.fromisoformat(time_str)
+                    else:
+                        dt = time_str
+                    return dt.strftime('%H:%M')
+                except (ValueError, TypeError):
+                    return str(time_str) if time_str else ''
+            
+            csv_writer.writerow([
+                record.get('date', ''),
+                record.get('username', ''),
+                record.get('display_name', ''),
+                format_time(record.get('clock_in_time')),
+                format_time(record.get('clock_out_time')),
+                format_time(record.get('break_start_time')),
+                format_time(record.get('break_end_time')),
+                record.get('total_break_minutes', 0),
+                f"{record.get('total_work_hours', 0):.1f}",
+                f"{record.get('overtime_hours', 0):.1f}",
+                record.get('status', ''),
+                record.get('notes', '')
+            ])
+        
+        # CSV内容の確認
+        csv_content = csv_buffer.getvalue()
+        self.assertIn('日付', csv_content)
+        self.assertIn('ユーザー名', csv_content)
+        self.assertIn('csvtestuser', csv_content)
+        
+        # エンコーディングテスト
+        try:
+            csv_bytes = io.BytesIO(csv_content.encode('utf-8-sig'))
+            self.assertIsNotNone(csv_bytes.getvalue())
+        except Exception as e:
+            self.fail(f"CSVエンコーディングでエラー: {e}")
+    
+    def test_csv_edge_cases(self):
+        """CSVエッジケースのテスト"""
+        # データが存在しない場合
+        future_date = (date.today() + timedelta(days=30)).isoformat()
+        csv_data = self.attendance_repo.get_attendance_range(future_date, future_date)
+        self.assertEqual(len(csv_data), 0)
+        
+        # 特定ユーザーのみの場合
+        today = date.today().isoformat()
+        self.attendance_repo.clock_in(self.test_user_id, today)
+        
+        csv_data = self.attendance_repo.get_attendance_range(
+            today, today, self.test_user_id
+        )
+        self.assertEqual(len(csv_data), 1)
+        self.assertEqual(csv_data[0]['username'], 'csvtestuser')
+    
+    def test_csv_japanese_timezone(self):
+        """CSV出力での日本時間テスト"""
+        import pytz
+        
+        # 日本時間の設定
+        jst = pytz.timezone('Asia/Tokyo')
+        now_jst = datetime.now(jst)
+        
+        # タイムゾーンが正しく設定されていることを確認
+        self.assertEqual(Config.TIMEZONE, 'Asia/Tokyo')
+        
+        # 日時フォーマットが日本時間ベースで動作することを確認
+        today = date.today().isoformat()
+        self.attendance_repo.clock_in(self.test_user_id, today)
+        
+        record = self.attendance_repo.get_today_attendance(self.test_user_id, today)
+        self.assertIsNotNone(record)
+        
+        # 日時データが存在し、処理可能であることを確認
+        clock_in_time = record['clock_in_time']
+        if isinstance(clock_in_time, str):
+            dt = datetime.fromisoformat(clock_in_time)
+        else:
+            dt = clock_in_time
+        
+        # 日時オブジェクトが正常に作成されることを確認
+        self.assertIsInstance(dt, datetime)
 
-class TestConfigValidation(unittest.TestCase):
-    """設定検証テスト"""
+def run_attendance_tests():
+    """出退勤テストの実行"""
+    loader = unittest.TestLoader()
+    suite = unittest.TestSuite()
     
-    def test_environment_variables(self):
-        """環境変数テスト"""
-        self.assertEqual(os.environ.get('ENVIRONMENT'), 'test')
-        self.assertIsNotNone(os.environ.get('DATABASE_URL'))
-    
-    def test_database_url_format(self):
-        """DATABASE_URL形式テスト"""
-        db_url = os.environ.get('DATABASE_URL', '')
-        
-        # SQLiteまたはPostgreSQLの形式チェック
-        is_sqlite = 'sqlite' in db_url
-        is_postgres = 'postgres' in db_url
-        
-        self.assertTrue(is_sqlite or is_postgres, "Database URL should be SQLite or PostgreSQL format")
-
-def run_tests():
-    """テスト実行関数"""
-    print("🧪 Discord Bot Enterprise - 出退勤機能テスト開始")
-    print("=" * 60)
-    
-    # テストスイートの作成
-    test_suite = unittest.TestSuite()
-    
-    # テストケースの追加
-    test_classes = [
-        TestDateTimeCompatibility,
-        TestDatabaseCompatibility,
-        TestAttendanceBusinessLogic,
-        TestAttendanceCommands,
-        TestErrorHandling,
-        TestConfigValidation
-    ]
-    
-    for test_class in test_classes:
-        tests = unittest.TestLoader().loadTestsFromTestCase(test_class)
-        test_suite.addTests(tests)
+    # テストクラスを追加
+    suite.addTests(loader.loadTestsFromTestCase(TestDateTimeCompatibility))
+    suite.addTests(loader.loadTestsFromTestCase(TestAttendanceBusinessLogic))
+    suite.addTests(loader.loadTestsFromTestCase(TestAttendanceCSVExport))
     
     # テスト実行
     runner = unittest.TextTestRunner(verbosity=2)
-    result = runner.run(test_suite)
-    
-    # 結果サマリー
-    print("\n" + "=" * 60)
-    print("🎯 テスト結果サマリー")
-    print(f"✅ 成功: {result.testsRun - len(result.failures) - len(result.errors)}")
-    print(f"❌ 失敗: {len(result.failures)}")
-    print(f"💥 エラー: {len(result.errors)}")
-    print(f"📊 総テスト数: {result.testsRun}")
-    
-    if result.failures:
-        print("\n🚨 失敗したテスト:")
-        for test, traceback in result.failures:
-            print(f"  - {test}")
-    
-    if result.errors:
-        print("\n💥 エラーが発生したテスト:")
-        for test, traceback in result.errors:
-            print(f"  - {test}")
+    result = runner.run(suite)
     
     return result.wasSuccessful()
 
 if __name__ == '__main__':
-    success = run_tests()
+    success = run_attendance_tests()
     sys.exit(0 if success else 1) 

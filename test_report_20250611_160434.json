@@ -1,0 +1,338 @@
+{
+  "timestamp": "2025-06-11T16:04:34.512278",
+  "total_duration": 34.08295011520386,
+  "results": {
+    "test_basic": {
+      "tests_run": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "success_count": 4,
+      "duration": 0.9585514068603516,
+      "details": [
+        {
+          "test": "test_command_imports (tests.test_basic.TestBotCommands.test_command_imports)",
+          "status": "SUCCESS",
+          "duration": 0.7115194797515869,
+          "message": null
+        },
+        {
+          "test": "test_config_loading (tests.test_basic.TestConfig.test_config_loading)",
+          "status": "SUCCESS",
+          "duration": 0.0,
+          "message": null
+        },
+        {
+          "test": "test_task_operations (tests.test_basic.TestDatabaseBasic.test_task_operations)",
+          "status": "SUCCESS",
+          "duration": 0.12351107597351074,
+          "message": null
+        },
+        {
+          "test": "test_user_operations (tests.test_basic.TestDatabaseBasic.test_user_operations)",
+          "status": "SUCCESS",
+          "duration": 0.12301397323608398,
+          "message": null
+        }
+      ],
+      "output": "test_command_imports (tests.test_basic.TestBotCommands.test_command_imports)\nコマンドモジュールがインポートできるかテスト ... ok\ntest_config_loading (tests.test_basic.TestConfig.test_config_loading)\n設定読み込みのテスト ... ok\ntest_task_operations (tests.test_basic.TestDatabaseBasic.test_task_operations)\nタスク操作のテスト ... ok\ntest_user_operations (tests.test_basic.TestDatabaseBasic.test_user_operations)\nユーザー操作のテスト ... ok\n\n----------------------------------------------------------------------\nRan 4 tests in 0.958s\n\nOK\n"
+    },
+    "test_attendance": {
+      "tests_run": 13,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1,
+      "success_count": 12,
+      "duration": 0.16120624542236328,
+      "details": [
+        {
+          "test": "test_break_time_calculation (tests.test_attendance.TestAttendanceBusinessLogic.test_break_time_calculation)",
+          "status": "SUCCESS",
+          "duration": 0.0,
+          "message": null
+        },
+        {
+          "test": "test_overtime_calculation (tests.test_attendance.TestAttendanceBusinessLogic.test_overtime_calculation)",
+          "status": "SUCCESS",
+          "duration": 0.0,
+          "message": null
+        },
+        {
+          "test": "test_work_hours_calculation (tests.test_attendance.TestAttendanceBusinessLogic.test_work_hours_calculation)",
+          "status": "SUCCESS",
+          "duration": 0.0,
+          "message": null
+        },
+        {
+          "test": "test_csv_creation_and_encoding (tests.test_attendance.TestAttendanceCSVExport.test_csv_creation_and_encoding)",
+          "status": "SUCCESS",
+          "duration": 0.03249669075012207,
+          "message": null
+        },
+        {
+          "test": "test_csv_data_format (tests.test_attendance.TestAttendanceCSVExport.test_csv_data_format)",
+          "status": "SUCCESS",
+          "duration": 0.052211761474609375,
+          "message": null
+        },
+        {
+          "test": "test_csv_edge_cases (tests.test_attendance.TestAttendanceCSVExport.test_csv_edge_cases)",
+          "status": "SUCCESS",
+          "duration": 0.026497840881347656,
+          "message": null
+        },
+        {
+          "test": "test_csv_japanese_timezone (tests.test_attendance.TestAttendanceCSVExport.test_csv_japanese_timezone)",
+          "status": "SUCCESS",
+          "duration": 0.022499799728393555,
+          "message": null
+        },
+        {
+          "test": "test_csv_time_formatting (tests.test_attendance.TestAttendanceCSVExport.test_csv_time_formatting)",
+          "status": "SUCCESS",
+          "duration": 0.02649998664855957,
+          "message": null
+        },
+        {
+          "test": "test_postgresql_imports (tests.test_attendance.TestDatabaseCompatibility.test_postgresql_imports)",
+          "status": "SKIP",
+          "duration": 0.0,
+          "message": "PostgreSQL libraries not available in local environment"
+        },
+        {
+          "test": "test_sqlite_fallback (tests.test_attendance.TestDatabaseCompatibility.test_sqlite_fallback)",
+          "status": "SUCCESS",
+          "duration": 0.0,
+          "message": null
+        },
+        {
+          "test": "test_datetime_object_handling (tests.test_attendance.TestDateTimeCompatibility.test_datetime_object_handling)",
+          "status": "SUCCESS",
+          "duration": 0.0,
+          "message": null
+        },
+        {
+          "test": "test_none_datetime_handling (tests.test_attendance.TestDateTimeCompatibility.test_none_datetime_handling)",
+          "status": "SUCCESS",
+          "duration": 0.0,
+          "message": null
+        },
+        {
+          "test": "test_string_datetime_handling (tests.test_attendance.TestDateTimeCompatibility.test_string_datetime_handling)",
+          "status": "SUCCESS",
+          "duration": 0.0,
+          "message": null
+        }
+      ],
+      "output": "test_break_time_calculation (tests.test_attendance.TestAttendanceBusinessLogic.test_break_time_calculation)\n休憩時間計算テスト ... ok\ntest_overtime_calculation (tests.test_attendance.TestAttendanceBusinessLogic.test_overtime_calculation)\n残業時間計算テスト ... ok\ntest_work_hours_calculation (tests.test_attendance.TestAttendanceBusinessLogic.test_work_hours_calculation)\n勤務時間計算テスト ... ok\ntest_csv_creation_and_encoding (tests.test_attendance.TestAttendanceCSVExport.test_csv_creation_and_encoding)\nCSV作成とエンコーディングのテスト ... ok\ntest_csv_data_format (tests.test_attendance.TestAttendanceCSVExport.test_csv_data_format)\nCSV出力データ形式のテスト ... ok\ntest_csv_edge_cases (tests.test_attendance.TestAttendanceCSVExport.test_csv_edge_cases)\nCSVエッジケースのテスト ... ok\ntest_csv_japanese_timezone (tests.test_attendance.TestAttendanceCSVExport.test_csv_japanese_timezone)\nCSV出力での日本時間テスト ... ok\ntest_csv_time_formatting (tests.test_attendance.TestAttendanceCSVExport.test_csv_time_formatting)\nCSV時刻フォーマットのテスト ... ok\ntest_postgresql_imports (tests.test_attendance.TestDatabaseCompatibility.test_postgresql_imports)\nPostgreSQL関連のインポートテスト ... skipped 'PostgreSQL libraries not available in local environment'\ntest_sqlite_fallback (tests.test_attendance.TestDatabaseCompatibility.test_sqlite_fallback)\nSQLite フォールバックテスト ... ok\ntest_datetime_object_handling (tests.test_attendance.TestDateTimeCompatibility.test_datetime_object_handling)\ndatetimeオブジェクトの処理テスト ... ok\ntest_none_datetime_handling (tests.test_attendance.TestDateTimeCompatibility.test_none_datetime_handling)\nNone値の日時処理テスト ... ok\ntest_string_datetime_handling (tests.test_attendance.TestDateTimeCompatibility.test_string_datetime_handling)\n文字列日時の処理テスト ... ok\n\n----------------------------------------------------------------------\nRan 13 tests in 0.161s\n\nOK (skipped=1)\n"
+    },
+    "test_database_integration": {
+      "tests_run": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "success_count": 8,
+      "duration": 1.362083911895752,
+      "details": [
+        {
+          "test": "test_attendance_csv_data_workflow (tests.test_database_integration.TestDatabaseIntegration.test_attendance_csv_data_workflow)",
+          "status": "SUCCESS",
+          "duration": 0.1470201015472412,
+          "message": null
+        },
+        {
+          "test": "test_concurrent_database_operations (tests.test_database_integration.TestDatabaseIntegration.test_concurrent_database_operations)",
+          "status": "SUCCESS",
+          "duration": 0.13402199745178223,
+          "message": null
+        },
+        {
+          "test": "test_data_type_consistency (tests.test_database_integration.TestDatabaseIntegration.test_data_type_consistency)",
+          "status": "SUCCESS",
+          "duration": 0.12801122665405273,
+          "message": null
+        },
+        {
+          "test": "test_database_schema_consistency (tests.test_database_integration.TestDatabaseIntegration.test_database_schema_consistency)",
+          "status": "SUCCESS",
+          "duration": 0.12146377563476562,
+          "message": null
+        },
+        {
+          "test": "test_edge_cases_handling (tests.test_database_integration.TestDatabaseIntegration.test_edge_cases_handling)",
+          "status": "SUCCESS",
+          "duration": 0.13051438331604004,
+          "message": null
+        },
+        {
+          "test": "test_multi_user_attendance_workflow (tests.test_database_integration.TestDatabaseIntegration.test_multi_user_attendance_workflow)",
+          "status": "SUCCESS",
+          "duration": 0.13501572608947754,
+          "message": null
+        },
+        {
+          "test": "test_performance_with_large_dataset (tests.test_database_integration.TestDatabaseIntegration.test_performance_with_large_dataset)",
+          "status": "SUCCESS",
+          "duration": 0.43152284622192383,
+          "message": null
+        },
+        {
+          "test": "test_task_and_user_integration (tests.test_database_integration.TestDatabaseIntegration.test_task_and_user_integration)",
+          "status": "SUCCESS",
+          "duration": 0.13451385498046875,
+          "message": null
+        }
+      ],
+      "output": "test_attendance_csv_data_workflow (tests.test_database_integration.TestDatabaseIntegration.test_attendance_csv_data_workflow)\nCSV出力用データの統合テスト ... ok\ntest_concurrent_database_operations (tests.test_database_integration.TestDatabaseIntegration.test_concurrent_database_operations)\n並行データベース操作のテスト ... ok\ntest_data_type_consistency (tests.test_database_integration.TestDatabaseIntegration.test_data_type_consistency)\nデータ型の一貫性テスト ... ok\ntest_database_schema_consistency (tests.test_database_integration.TestDatabaseIntegration.test_database_schema_consistency)\nデータベーススキーマの一貫性テスト ... ok\ntest_edge_cases_handling (tests.test_database_integration.TestDatabaseIntegration.test_edge_cases_handling)\nエッジケースの処理テスト ... ok\ntest_multi_user_attendance_workflow (tests.test_database_integration.TestDatabaseIntegration.test_multi_user_attendance_workflow)\n複数ユーザーの出退勤ワークフローテスト ... ok\ntest_performance_with_large_dataset (tests.test_database_integration.TestDatabaseIntegration.test_performance_with_large_dataset)\n大量データでのパフォーマンステスト ... ok\ntest_task_and_user_integration (tests.test_database_integration.TestDatabaseIntegration.test_task_and_user_integration)\nタスクとユーザーの統合テスト ... ok\n\n----------------------------------------------------------------------\nRan 8 tests in 1.362s\n\nOK\n"
+    },
+    "test_error_handling": {
+      "tests_run": 13,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "success_count": 13,
+      "duration": 0.30299973487854004,
+      "details": [
+        {
+          "test": "test_break_end_without_break_start (tests.test_error_handling.TestAttendanceErrorHandling.test_break_end_without_break_start)",
+          "status": "SUCCESS",
+          "duration": 0.020499229431152344,
+          "message": null
+        },
+        {
+          "test": "test_break_operations_without_clock_in (tests.test_error_handling.TestAttendanceErrorHandling.test_break_operations_without_clock_in)",
+          "status": "SUCCESS",
+          "duration": 0.019500017166137695,
+          "message": null
+        },
+        {
+          "test": "test_clock_out_without_clock_in (tests.test_error_handling.TestAttendanceErrorHandling.test_clock_out_without_clock_in)",
+          "status": "SUCCESS",
+          "duration": 0.016001224517822266,
+          "message": null
+        },
+        {
+          "test": "test_database_connection_error_handling (tests.test_error_handling.TestAttendanceErrorHandling.test_database_connection_error_handling)",
+          "status": "SUCCESS",
+          "duration": 0.01449894905090332,
+          "message": null
+        },
+        {
+          "test": "test_extremely_large_work_hours (tests.test_error_handling.TestAttendanceErrorHandling.test_extremely_large_work_hours)",
+          "status": "SUCCESS",
+          "duration": 0.02500009536743164,
+          "message": null
+        },
+        {
+          "test": "test_invalid_datetime_format_handling (tests.test_error_handling.TestAttendanceErrorHandling.test_invalid_datetime_format_handling)",
+          "status": "SUCCESS",
+          "duration": 0.02300095558166504,
+          "message": null
+        },
+        {
+          "test": "test_negative_work_hours (tests.test_error_handling.TestAttendanceErrorHandling.test_negative_work_hours)",
+          "status": "SUCCESS",
+          "duration": 0.02899932861328125,
+          "message": null
+        },
+        {
+          "test": "test_none_total_work_hours_handling (tests.test_error_handling.TestAttendanceErrorHandling.test_none_total_work_hours_handling)",
+          "status": "SUCCESS",
+          "duration": 0.021500110626220703,
+          "message": null
+        },
+        {
+          "test": "test_rapid_clock_operations (tests.test_error_handling.TestConcurrencyAndRaceConditions.test_rapid_clock_operations)",
+          "status": "SUCCESS",
+          "duration": 0.08449983596801758,
+          "message": null
+        },
+        {
+          "test": "test_mixed_datetime_formats (tests.test_error_handling.TestDataTypeCompatibility.test_mixed_datetime_formats)",
+          "status": "SUCCESS",
+          "duration": 0.023499488830566406,
+          "message": null
+        },
+        {
+          "test": "test_unicode_and_special_characters (tests.test_error_handling.TestDataTypeCompatibility.test_unicode_and_special_characters)",
+          "status": "SUCCESS",
+          "duration": 0.025001049041748047,
+          "message": null
+        },
+        {
+          "test": "test_clock_out_with_invalid_datetime_strings (tests.test_error_handling.TestUIErrorHandling.test_clock_out_with_invalid_datetime_strings)",
+          "status": "SUCCESS",
+          "duration": 0.0004987716674804688,
+          "message": null
+        },
+        {
+          "test": "test_clock_out_with_none_values (tests.test_error_handling.TestUIErrorHandling.test_clock_out_with_none_values)",
+          "status": "SUCCESS",
+          "duration": 0.0,
+          "message": null
+        }
+      ],
+      "output": "test_break_end_without_break_start (tests.test_error_handling.TestAttendanceErrorHandling.test_break_end_without_break_start)\n休憩開始なしでの休憩終了テスト ... ok\ntest_break_operations_without_clock_in (tests.test_error_handling.TestAttendanceErrorHandling.test_break_operations_without_clock_in)\n出勤記録なしでの休憩操作テスト ... ok\ntest_clock_out_without_clock_in (tests.test_error_handling.TestAttendanceErrorHandling.test_clock_out_without_clock_in)\n出勤記録なしでの退勤処理テスト ... ok\ntest_database_connection_error_handling (tests.test_error_handling.TestAttendanceErrorHandling.test_database_connection_error_handling)\nデータベース接続エラーのハンドリングテスト ... ok\ntest_extremely_large_work_hours (tests.test_error_handling.TestAttendanceErrorHandling.test_extremely_large_work_hours)\n異常に大きな勤務時間のテスト ... ok\ntest_invalid_datetime_format_handling (tests.test_error_handling.TestAttendanceErrorHandling.test_invalid_datetime_format_handling)\n不正な日時形式のハンドリングテスト ... ok\ntest_negative_work_hours (tests.test_error_handling.TestAttendanceErrorHandling.test_negative_work_hours)\n負の勤務時間のテスト（時刻操作によるエラー） ... ok\ntest_none_total_work_hours_handling (tests.test_error_handling.TestAttendanceErrorHandling.test_none_total_work_hours_handling)\ntotal_work_hoursがNoneの場合のハンドリングテスト（修正したバグ） ... ok\ntest_rapid_clock_operations (tests.test_error_handling.TestConcurrencyAndRaceConditions.test_rapid_clock_operations)\n高速な出退勤操作のテスト ... ok\ntest_mixed_datetime_formats (tests.test_error_handling.TestDataTypeCompatibility.test_mixed_datetime_formats)\n混在する日時形式のテスト ... ok\ntest_unicode_and_special_characters (tests.test_error_handling.TestDataTypeCompatibility.test_unicode_and_special_characters)\nUnicode文字と特殊文字のテスト ... ok\ntest_clock_out_with_invalid_datetime_strings (tests.test_error_handling.TestUIErrorHandling.test_clock_out_with_invalid_datetime_strings)\n不正な日時文字列での退勤処理テスト ... ok\ntest_clock_out_with_none_values (tests.test_error_handling.TestUIErrorHandling.test_clock_out_with_none_values)\n退勤時のNone値ハンドリングテスト（修正したバグ） ... ok\n\n----------------------------------------------------------------------\nRan 13 tests in 0.303s\n\nOK\n"
+    },
+    "test_performance": {
+      "tests_run": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "success_count": 7,
+      "duration": 31.116093397140503,
+      "details": [
+        {
+          "test": "test_concurrent_attendance_operations (tests.test_performance.TestConcurrentPerformance.test_concurrent_attendance_operations)",
+          "status": "SUCCESS",
+          "duration": 0.3966333866119385,
+          "message": null
+        },
+        {
+          "test": "test_read_write_concurrency (tests.test_performance.TestConcurrentPerformance.test_read_write_concurrency)",
+          "status": "SUCCESS",
+          "duration": 0.5516197681427002,
+          "message": null
+        },
+        {
+          "test": "test_stress_test (tests.test_performance.TestConcurrentPerformance.test_stress_test)",
+          "status": "SUCCESS",
+          "duration": 2.6992666721343994,
+          "message": null
+        },
+        {
+          "test": "test_bulk_attendance_records_performance (tests.test_performance.TestDatabasePerformance.test_bulk_attendance_records_performance)",
+          "status": "SUCCESS",
+          "duration": 0.9960992336273193,
+          "message": null
+        },
+        {
+          "test": "test_bulk_user_creation_performance (tests.test_performance.TestDatabasePerformance.test_bulk_user_creation_performance)",
+          "status": "SUCCESS",
+          "duration": 3.5121824741363525,
+          "message": null
+        },
+        {
+          "test": "test_complex_query_performance (tests.test_performance.TestDatabasePerformance.test_complex_query_performance)",
+          "status": "SUCCESS",
+          "duration": 10.647921323776245,
+          "message": null
+        },
+        {
+          "test": "test_database_size_impact (tests.test_performance.TestDatabasePerformance.test_database_size_impact)",
+          "status": "SUCCESS",
+          "duration": 12.311872720718384,
+          "message": null
+        }
+      ],
+      "output": "test_concurrent_attendance_operations (tests.test_performance.TestConcurrentPerformance.test_concurrent_attendance_operations)\n同時出退勤操作のパフォーマンステスト ... ok\ntest_read_write_concurrency (tests.test_performance.TestConcurrentPerformance.test_read_write_concurrency)\n読み書き同時処理のパフォーマンステスト ... ok\ntest_stress_test (tests.test_performance.TestConcurrentPerformance.test_stress_test)\nストレステスト ... ok\ntest_bulk_attendance_records_performance (tests.test_performance.TestDatabasePerformance.test_bulk_attendance_records_performance)\n大量出退勤記録のパフォーマンステスト ... ok\ntest_bulk_user_creation_performance (tests.test_performance.TestDatabasePerformance.test_bulk_user_creation_performance)\n大量ユーザー作成のパフォーマンステスト ... ok\ntest_complex_query_performance (tests.test_performance.TestDatabasePerformance.test_complex_query_performance)\n複雑なクエリのパフォーマンステスト ... ok\ntest_database_size_impact (tests.test_performance.TestDatabasePerformance.test_database_size_impact)\nデータベースサイズがパフォーマンスに与える影響のテスト ... ok\n\n----------------------------------------------------------------------\nRan 7 tests in 31.116s\n\nOK\n"
+    }
+  },
+  "summary": {
+    "total_tests": 45,
+    "total_success": 44,
+    "total_failures": 0,
+    "total_errors": 0,
+    "total_skipped": 1
+  }
+}

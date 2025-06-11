@@ -12,7 +12,7 @@ os.environ.setdefault('ENVIRONMENT', 'test')
 # プロジェクトルートをパスに追加
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from database import DatabaseManager, UserRepository, DailyReportRepository, TaskRepository
+from database import DatabaseManager, UserRepository, TaskRepository
 from config import Config
 
 class TestDatabaseBasic(unittest.TestCase):
@@ -29,7 +29,6 @@ class TestDatabaseBasic(unittest.TestCase):
         self.db_manager.init_database()
         
         self.user_repo = UserRepository(self.db_manager)
-        self.daily_report_repo = DailyReportRepository(self.db_manager)
         self.task_repo = TaskRepository(self.db_manager)
     
     def tearDown(self):
@@ -76,29 +75,6 @@ class TestDatabaseBasic(unittest.TestCase):
         user = self.user_repo.get_user_by_discord_id("123456789")
         self.assertEqual(user['username'], "newuser")
     
-    def test_daily_report_operations(self):
-        """日報操作のテスト"""
-        # ユーザー作成（日報投稿に必要）
-        self.user_repo.create_user(
-            discord_id="123456789",
-            username="testuser"
-        )
-        
-        # 日報作成
-        from datetime import date
-        today = date.today().isoformat()
-        report_id = self.daily_report_repo.create_daily_report(
-            user_id=1,
-            report_date=today,
-            today_tasks="今日はプロジェクトAの設計を行いました"
-        )
-        self.assertIsNotNone(report_id)
-        
-        # 日報取得
-        report = self.daily_report_repo.get_daily_report(1, today)
-        self.assertIsNotNone(report)
-        self.assertIn("プロジェクトA", report['today_tasks'])
-    
     def test_task_operations(self):
         """タスク操作のテスト"""
         # ユーザー作成
@@ -144,8 +120,8 @@ class TestBotCommands(unittest.TestCase):
     def test_command_imports(self):
         """コマンドモジュールがインポートできるかテスト"""
         try:
-            from bot.commands import daily_report, task_manager, attendance, admin, help
-            from bot.utils import reminder, google_api
+            from bot.commands import task_manager, attendance, admin, help
+            from bot.utils import google_api
             # インポートが成功すれば合格
             self.assertTrue(True)
         except ImportError as e:
