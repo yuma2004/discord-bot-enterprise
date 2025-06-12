@@ -2,13 +2,37 @@
 アプリケーション設定管理
 リファクタリング版 - 型安全性とエラーハンドリング改善
 """
-from dotenv import load_dotenv
 import logging
+import os
 from typing import Dict, List
-from core.utils import safe_getenv, validate_log_level, ValidationError
 
-# .envファイルの読み込み
-load_dotenv()
+# Try to load dotenv if available, but continue without it
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    # Continue without dotenv
+    pass
+
+# Local utility functions to avoid circular imports
+def safe_getenv(key: str, default: str = '', required: bool = False) -> str:
+    """安全な環境変数取得"""
+    value = os.getenv(key, default)
+    if required and not value:
+        raise ValueError(f"必須の環境変数 '{key}' が設定されていません")
+    return value or default
+
+def validate_log_level(level: str) -> str:
+    """ログレベルの検証"""
+    valid_levels = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+    level_upper = level.upper()
+    if level_upper not in valid_levels:
+        level_upper = 'INFO'  # Fallback to INFO instead of raising error
+    return level_upper
+
+class ValidationError(Exception):
+    """設定検証エラー"""
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +41,7 @@ class Config:
     """アプリケーション設定管理クラス"""
     
     # Discord設定
-    DISCORD_TOKEN: str = safe_getenv('DISCORD_TOKEN', '', required=True)
+    DISCORD_TOKEN: str = safe_getenv('DISCORD_TOKEN', '')  # Remove required=True for import
     DISCORD_GUILD_ID: int = int(safe_getenv('DISCORD_GUILD_ID', '0'))
     
     # Google API設定
@@ -47,7 +71,7 @@ class Config:
         
         # 必須設定の確認
         if not cls.DISCORD_TOKEN:
-            errors.append("DISCORD_TOKEN が設定されていません")
+            errors.append("DISCORD_TOKEN が設定されていません (main.py実行時に必要)")
         
         if cls.DISCORD_GUILD_ID == 0:
             errors.append("DISCORD_GUILD_ID が設定されていません")

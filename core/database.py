@@ -20,15 +20,23 @@ class DatabaseManager:
                 from database_postgres import db_manager
                 logger.info("PostgreSQL データベースマネージャーを使用します")
                 return db_manager, "PostgreSQL"
-            except ImportError as e:
+            except (ImportError, ModuleNotFoundError) as e:
                 logger.warning(f"PostgreSQL ライブラリが見つかりません: {e}")
                 logger.info("SQLite データベースマネージャーにフォールバックします")
-                from database import db_manager
-                return db_manager, "SQLite (PostgreSQL libraries not found)"
+                try:
+                    from database import db_manager
+                    return db_manager, "SQLite (PostgreSQL libraries not found)"
+                except (ImportError, ModuleNotFoundError) as e:
+                    logger.error(f"データベースマネージャーの読み込みに失敗: {e}")
+                    return None, "Failed to load database manager"
         else:
-            from database import db_manager
-            logger.info("SQLite データベースマネージャーを使用します")
-            return db_manager, "SQLite"
+            try:
+                from database import db_manager
+                logger.info("SQLite データベースマネージャーを使用します")
+                return db_manager, "SQLite"
+            except (ImportError, ModuleNotFoundError) as e:
+                logger.error(f"SQLite データベースマネージャーの読み込みに失敗: {e}")
+                return None, "Failed to load SQLite database manager"
 
 # グローバルなデータベースマネージャーのインスタンス
 db_manager, DB_TYPE = DatabaseManager.get_db_manager()

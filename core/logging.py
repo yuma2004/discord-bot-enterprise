@@ -3,8 +3,8 @@
 """
 import logging
 import sys
+import os
 from typing import Optional
-from config import Config
 
 
 class LoggerManager:
@@ -20,7 +20,8 @@ class LoggerManager:
             return logger
         
         # ログレベルの設定
-        log_level = getattr(logging, Config.LOG_LEVEL.upper(), logging.INFO)
+        log_level_str = os.getenv('LOG_LEVEL', 'INFO').upper()
+        log_level = getattr(logging, log_level_str, logging.INFO)
         logger.setLevel(log_level)
         
         # フォーマッターの作成

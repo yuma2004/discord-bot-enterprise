@@ -528,19 +528,17 @@ def get_default_instances():
 if __name__ != '__main__':
     # テスト実行時以外でインスタンス作成
     try:
-        # 環境変数チェック
-        if os.getenv('DISCORD_TOKEN'):
-            _instances = get_default_instances()
-            db_manager = _instances['db_manager']
-            user_repo = _instances['user_repo']
-            task_repo = _instances['task_repo']
-            attendance_repo = _instances['attendance_repo']
-        else:
-            # 環境変数が設定されていない場合はNone
-            db_manager = None
-            user_repo = None
-            task_repo = None
-            attendance_repo = None
+        # Always create instances for imports, but log a warning if Discord token is missing
+        _instances = get_default_instances()
+        db_manager = _instances['db_manager']
+        user_repo = _instances['user_repo']
+        task_repo = _instances['task_repo']
+        attendance_repo = _instances['attendance_repo']
+        
+        # Check for Discord token and warn if missing
+        if not os.getenv('DISCORD_TOKEN'):
+            logger = logging.getLogger(__name__)
+            logger.warning("DISCORD_TOKEN not set - database created but bot won't start")
         
         # 互換性のため
         daily_report_repo = None
