@@ -20,8 +20,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from bot.utils.datetime_utils import (
     now_jst, today_jst, ensure_jst, format_time_only, format_date_only,
     format_datetime_for_display, calculate_work_hours, calculate_overtime_hours,
-    get_month_date_range, parse_date_string, adapt_datetime_for_sqlite,
-    convert_datetime_from_sqlite, JST
+    calculate_time_difference, get_month_date_range, parse_date_string, 
+    adapt_datetime_for_sqlite, convert_datetime_from_sqlite, JST
 )
 
 from bot.utils.database_utils import (

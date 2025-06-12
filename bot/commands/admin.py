@@ -1,8 +1,8 @@
 import discord
 from discord.ext import commands
-from datetime import datetime
 from core.logging import LoggerManager
 from core.database import db_manager
+from bot.utils.datetime_utils import now_jst
 import os
 import shutil
 from typing import Dict, Any, List
@@ -67,7 +67,7 @@ class AdminCog(commands.Cog):
             embed = discord.Embed(
                 title="📊 システム統計",
                 color=discord.Color.blue(),
-                timestamp=datetime.now()
+                timestamp=now_jst()
             )
             
             embed.add_field(name="登録ユーザー数", value=f"{stats['total_users']}人", inline=True)
@@ -106,7 +106,7 @@ class AdminCog(commands.Cog):
             embed = discord.Embed(
                 title="👥 ユーザー一覧",
                 color=discord.Color.green(),
-                timestamp=datetime.now()
+                timestamp=now_jst()
             )
             
             user_list: List[str] = []
@@ -158,7 +158,7 @@ class AdminCog(commands.Cog):
             embed = discord.Embed(
                 title="📋 タスク統計",
                 color=discord.Color.orange(),
-                timestamp=datetime.now()
+                timestamp=now_jst()
             )
             
             # ステータス別
@@ -212,11 +212,11 @@ class AdminCog(commands.Cog):
                 
                 # 日別出勤率
                 cursor.execute(f"""
-                    SELECT DATE(check_in_time) as date,
+                    SELECT DATE(clock_in_time) as date,
                            COUNT(DISTINCT user_id) as attendance_count
-                    FROM attendance_records
-                    WHERE check_in_time >= date('now', '-{days} days')
-                    GROUP BY DATE(check_in_time)
+                    FROM attendance
+                    WHERE clock_in_time >= date('now', '-{days} days')
+                    GROUP BY DATE(clock_in_time)
                     ORDER BY date DESC
                 """)
                 daily_attendance = cursor.fetchall()
@@ -228,7 +228,7 @@ class AdminCog(commands.Cog):
             embed = discord.Embed(
                 title=f"📅 出勤統計（過去{days}日間）",
                 color=discord.Color.purple(),
-                timestamp=datetime.now()
+                timestamp=now_jst()
             )
             
             if daily_attendance and total_users > 0:
@@ -264,7 +264,7 @@ class AdminCog(commands.Cog):
                 await ctx.send("データベースに接続できません。")
                 return
                 
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            timestamp = now_jst().strftime("%Y%m%d_%H%M%S")
             backup_filename = f"backup_{timestamp}.db"
               # SQLiteの場合のみバックアップ実行
             try:
@@ -277,7 +277,7 @@ class AdminCog(commands.Cog):
                             title="💾 バックアップ完了",
                             description=f"バックアップファイル: {backup_filename}",
                             color=discord.Color.green(),
-                            timestamp=datetime.now()
+                            timestamp=now_jst()
                         )
                     else:
                         embed = discord.Embed(
@@ -315,7 +315,7 @@ class AdminCog(commands.Cog):
         embed = discord.Embed(
             title="⚙️ Bot設定",
             color=discord.Color.blue(),
-            timestamp=datetime.now()
+            timestamp=now_jst()
         )
         
         settings = {
@@ -374,16 +374,16 @@ class AdminCog(commands.Cog):
                     stats['overdue_tasks'] = result[0]
                 
                 cursor.execute("""
-                    SELECT COUNT(DISTINCT user_id) FROM attendance_records 
-                    WHERE DATE(check_in_time) = DATE('now')
+                    SELECT COUNT(DISTINCT user_id) FROM attendance 
+                    WHERE DATE(clock_in_time) = DATE('now')
                 """)
                 result = cursor.fetchone()
                 if result:
                     stats['today_attendance'] = result[0]
                 
                 cursor.execute("""
-                    SELECT COUNT(*) FROM attendance_records 
-                    WHERE DATE(check_in_time) = DATE('now') AND check_out_time IS NULL
+                    SELECT COUNT(*) FROM attendance 
+                    WHERE DATE(clock_in_time) = DATE('now') AND clock_out_time IS NULL
                 """)
                 result = cursor.fetchone()
                 if result:

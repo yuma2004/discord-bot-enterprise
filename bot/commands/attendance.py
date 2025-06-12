@@ -9,7 +9,7 @@ from config import Config
 from bot.utils.datetime_utils import (
     now_jst, today_jst, ensure_jst, format_time_only, 
     format_datetime_for_display, get_month_date_range,
-    parse_date_string, calculate_work_hours
+    parse_date_string, calculate_work_hours, calculate_time_difference
 )
 from bot.utils.database_utils import DatabaseError
 
@@ -422,7 +422,7 @@ class AttendanceCog(commands.Cog):
                     )
                 
                 if record['break_start_time'] and record['break_end_time']:
-                    break_duration = calculate_work_hours(
+                    break_duration = calculate_time_difference(
                         record['break_start_time'], 
                         record['break_end_time']
                     )

@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
-from datetime import datetime
 import logging
+from bot.utils.datetime_utils import now_jst
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ class HelpCog(commands.Cog):
             title="📚 企業用Discord Bot - ヘルプ",
             description="利用可能な機能一覧",
             color=discord.Color.blue(),
-            timestamp=datetime.now()
+            timestamp=now_jst()
         )
         
         # 基本情報
@@ -112,7 +112,7 @@ class HelpCog(commands.Cog):
             title="📝 日報機能ヘルプ",
             description="日報の提出・確認・管理機能",
             color=discord.Color.green(),
-            timestamp=datetime.now()
+            timestamp=now_jst()
         )
         
         commands = [
@@ -165,7 +165,7 @@ class HelpCog(commands.Cog):
             title="📋 タスク管理機能ヘルプ",
             description="個人タスクの追加・管理・追跡機能",
             color=discord.Color.orange(),
-            timestamp=datetime.now()
+            timestamp=now_jst()
         )
         
         commands = [
@@ -222,7 +222,7 @@ class HelpCog(commands.Cog):
             title="🕐 出退勤管理機能ヘルプ",
             description="出勤・退勤・休憩の記録と勤務時間管理",
             color=discord.Color.purple(),
-            timestamp=datetime.now()
+            timestamp=now_jst()
         )
         
         # ボタン操作の説明
@@ -279,7 +279,7 @@ class HelpCog(commands.Cog):
             title="📅 カレンダー機能ヘルプ",
             description="Googleカレンダーとの連携機能",
             color=discord.Color.blue(),
-            timestamp=datetime.now()
+            timestamp=now_jst()
         )
         
         commands = [
@@ -337,7 +337,7 @@ class HelpCog(commands.Cog):
             title="🔧 管理機能ヘルプ",
             description="Bot管理・統計・設定機能（管理者専用）",
             color=discord.Color.gold(),
-            timestamp=datetime.now()
+            timestamp=now_jst()
         )
         
         commands = [
@@ -394,7 +394,7 @@ class HelpCog(commands.Cog):
             title="🆘 サポート・お問い合わせ",
             description="Botの使用方法やトラブルについて",
             color=discord.Color.red(),
-            timestamp=datetime.now()
+            timestamp=now_jst()
         )
         
         embed.add_field(
@@ -433,7 +433,7 @@ class HelpCog(commands.Cog):
             title="🤖 企業用Discord Bot",
             description="バージョン情報・機能一覧",
             color=discord.Color.green(),
-            timestamp=datetime.now()
+            timestamp=now_jst()
         )
         
         embed.add_field(

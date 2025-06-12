@@ -3,6 +3,7 @@ from discord.ext import commands
 from datetime import datetime
 from typing import Dict, Any, Optional, List
 from core.logging import LoggerManager
+from bot.utils.datetime_utils import now_jst, parse_date_string
 
 # データベースリポジトリの動的インポート
 import os
@@ -65,7 +66,7 @@ class TaskManagerCog(commands.Cog):
                 title="✅ タスク追加完了",
                 description=f"タスクID: {task_id}",
                 color=discord.Color.green(),
-                timestamp=datetime.now()
+                timestamp=now_jst()
             )
             embed.add_field(name="タスク名", value=task_data['title'], inline=False)
             if task_data.get('description'):
@@ -114,7 +115,7 @@ class TaskManagerCog(commands.Cog):
             embed = discord.Embed(
                 title=title,
                 color=discord.Color.blue(),
-                timestamp=datetime.now()
+                timestamp=now_jst()
             )
             
             # ステータス別にタスクを分類
@@ -316,7 +317,7 @@ class TaskManagerCog(commands.Cog):
                 due_date = part.split('due:')[1]
                 try:
                     # 日付形式の確認
-                    datetime.strptime(due_date, '%Y-%m-%d')
+                    parse_date_string(due_date)
                     task_data['due_date'] = due_date
                 except ValueError:
                     pass  # 無効な日付は無視

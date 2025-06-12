@@ -9,7 +9,10 @@
       "Bash(ls:*)",
       "Bash(sudo apt:*)",
       "Bash(sudo apt install:*)",
-      "Bash(python -m pytest tests/test_basic.py -v)"
+      "Bash(python -m pytest tests/test_basic.py -v)",
+      "Bash(python test:*)",
+      "Bash(grep:*)",
+      "Bash(rg:*)"
     ],
     "deny": []
   }

@@ -3,6 +3,7 @@ from discord.ext import commands, tasks
 from datetime import datetime, time, date, timedelta
 import logging
 from bot.utils.google_api import google_calendar_service
+from bot.utils.datetime_utils import now_jst
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +40,7 @@ class CalendarCog(commands.Cog):
             embed = discord.Embed(
                 title=f"📅 今日の予定 ({date.today().strftime('%Y-%m-%d')})",
                 color=discord.Color.blue(),
-                timestamp=datetime.now()
+                timestamp=now_jst()
             )
             
             if not events:
@@ -110,7 +111,7 @@ class CalendarCog(commands.Cog):
             embed = discord.Embed(
                 title=f"📅 週間予定 ({start_of_week.strftime('%m/%d')} - {end_of_week.strftime('%m/%d')})",
                 color=discord.Color.blue(),
-                timestamp=datetime.now()
+                timestamp=now_jst()
             )
             
             if not events:
@@ -182,7 +183,7 @@ class CalendarCog(commands.Cog):
                 embed = discord.Embed(
                     title="📅 次の予定",
                     color=discord.Color.green(),
-                    timestamp=datetime.now()
+                    timestamp=now_jst()
                 )
                 
                 embed.add_field(
@@ -285,7 +286,7 @@ class CalendarCog(commands.Cog):
         embed = discord.Embed(
             title=f"📅 今日の予定 ({date.today().strftime('%Y-%m-%d')})",
             color=discord.Color.blue(),
-            timestamp=datetime.now()
+            timestamp=now_jst()
         )
         
         if not events:
