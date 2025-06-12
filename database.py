@@ -1,9 +1,11 @@
 import sqlite3
 import logging
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import List, Dict, Any, Optional
 import pytz
+import os
 from config import Config
+import threading
 
 logger = logging.getLogger(__name__)
 
@@ -11,8 +13,31 @@ logger = logging.getLogger(__name__)
 JST = pytz.timezone(Config.TIMEZONE)
 
 def now_jst():
-    """日本時間での現在時刻を取得"""
+    """現在の日本時間を取得（タイムゾーン情報付き）"""
     return datetime.now(JST)
+
+# Python 3.12対応のカスタムdatetimeアダプター
+def adapt_datetime(dt):
+    """Python 3.12対応のdatetimeアダプター"""
+    if dt.tzinfo is None:
+        # ナイーブなdatetimeをJSTとして扱う
+        dt = JST.localize(dt)
+    return dt.isoformat()
+
+def convert_datetime(val):
+    """Python 3.12対応のdatetimeコンバーター"""
+    if isinstance(val, bytes):
+        val = val.decode('utf-8')
+    try:
+        # ISO形式でパース
+        return datetime.fromisoformat(val)
+    except ValueError:
+        # フォールバック: デフォルトパース
+        return datetime.strptime(val, "%Y-%m-%d %H:%M:%S")
+
+# カスタムアダプターとコンバーターを登録
+sqlite3.register_adapter(datetime, adapt_datetime)
+sqlite3.register_converter("datetime", convert_datetime)
 
 class DatabaseManager:
     """データベース操作管理クラス"""
