@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rm:*)",
+      "Bash(diff:*)",
+      "Bash(find:*)",
+      "Bash(pip3 list:*)",
+      "Bash(python3:*)",
+      "Bash(ls:*)",
+      "Bash(sudo apt:*)",
+      "Bash(sudo apt install:*)",
+      "Bash(python -m pytest tests/test_basic.py -v)"
+    ],
+    "deny": []
+  }
+}

@@ -78,6 +78,18 @@ Thumbs.db
 *.db
 *.sqlite
 *.sqlite3
+# Test databases
+test_*.db
+integration_test_*.db
+test_concurrency_*.db
+test_concurrent_*.db
+test_csv_*.db
+test_data_type_*.db
+test_discord_bot_*.db  
+test_error_handling_*.db
+test_error_recovery_*.db
+test_integration_*.db
+test_performance_*.db
 
 # Logs
 logs/
@@ -113,4 +125,39 @@ credentials.json
 
 # Testing
 .pytest_cache/
-test_results/ 
+test_results/
+# Test reports
+test_report_*.json
+refactored_test_report_*.json
+
+# Cleanup: Duplicate and old files (v2.0.0 refactoring cleanup)
+*_old.py
+*_fixed.py
+*_refactored.py
+*_broken.py
+*_final.py
+core/health_check_*.py
+!core/health_check.py
+core/logging_*.py
+!core/logging.py
+config_refactored.py
+main_refactored.py
+bot/utils/database_utils.py
+bot/utils/datetime_utils.py
+
+# Documentation archives (completed tasks)
+REFACTORING_REPORT.md
+TYPE_ERROR_FIX_REPORT.md
+実装タスク.md
+要件定義.md
+テスト結果_*.md
+
+# Temporary executables
+*.exe
+
+# Temporary directories
+temp_*/
+
+# CLI tools
+koyeb.exe
+supabase.exe

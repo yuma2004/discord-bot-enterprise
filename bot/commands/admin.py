@@ -1,27 +1,33 @@
 import discord
 from discord.ext import commands
-from datetime import datetime, date, timedelta
-import logging
+from datetime import datetime
+from core.logging import LoggerManager
+from core.database import db_manager
 import os
-if os.getenv('DATABASE_URL') and 'postgres' in os.getenv('DATABASE_URL'):
-    from database_postgres import user_repo, daily_report_repo, task_repo, attendance_repo, db_manager
-else:
-    from database import user_repo, daily_report_repo, task_repo, attendance_repo, db_manager
-import json
-import os
-from typing import Dict, Any
+import shutil
+from typing import Dict, Any, List
 
-logger = logging.getLogger(__name__)
+# データベースリポジトリの動的インポート
+database_url = os.getenv('DATABASE_URL', '')
+if database_url and 'postgres' in database_url:
+    try:
+        from database_postgres import task_repo  # type: ignore
+    except ImportError:
+        from database import task_repo  # type: ignore
+else:
+    from database import task_repo  # type: ignore
+
+logger = LoggerManager.get_logger(__name__)
 
 class AdminCog(commands.Cog):
     """管理者機能を提供するCog"""
     
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
     
     @commands.group(name='admin', aliases=['管理'])
     @commands.has_permissions(administrator=True)
-    async def admin_group(self, ctx):
+    async def admin_group(self, ctx: commands.Context[commands.Bot]) -> None:
         """管理者コマンドグループ"""
         if ctx.invoked_subcommand is None:
             embed = discord.Embed(
@@ -35,7 +41,6 @@ class AdminCog(commands.Cog):
                 ("!admin users", "ユーザー一覧を表示"),
                 ("!admin backup", "データベースバックアップ"),
                 ("!admin settings", "Bot設定を表示"),
-                ("!admin report", "日報提出率レポート"),
                 ("!admin tasks", "全タスク統計"),
                 ("!admin attendance", "出勤統計")
             ]
@@ -50,60 +55,29 @@ class AdminCog(commands.Cog):
             await ctx.send(embed=embed)
     
     @admin_group.command(name='stats', aliases=['統計'])
-    async def show_stats(self, ctx):
-        """全体統計情報を表示"""
+    async def show_stats(self, ctx: commands.Context[commands.Bot]) -> None:
+        """システム統計を表示"""
         try:
-            # データベースから各種統計を取得
-            stats = await self._collect_statistics()
+            if db_manager is None:
+                await ctx.send("データベースに接続できません。")
+                return
+                
+            stats = self._get_system_stats()
             
             embed = discord.Embed(
-                title="📊 システム統計情報",
+                title="📊 システム統計",
                 color=discord.Color.blue(),
                 timestamp=datetime.now()
             )
             
-            # ユーザー統計
-            embed.add_field(
-                name="👥 ユーザー",
-                value=f"総登録者数: {stats['total_users']}名\n"
-                      f"今日の利用者: {stats['daily_active_users']}名",
-                inline=True
-            )
+            embed.add_field(name="登録ユーザー数", value=f"{stats['total_users']}人", inline=True)
+            embed.add_field(name="総タスク数", value=f"{stats['total_tasks']}件", inline=True)
+            embed.add_field(name="未完了タスク", value=f"{stats['pending_tasks']}件", inline=True)
+            embed.add_field(name="期限切れタスク", value=f"{stats['overdue_tasks']}件", inline=True)
+            embed.add_field(name="今日の出勤", value=f"{stats['today_attendance']}人", inline=True)
+            embed.add_field(name="現在出勤中", value=f"{stats['current_present']}人", inline=True)
+            embed.add_field(name="稼働時間", value=stats['uptime'], inline=True)
             
-            # 日報統計
-            embed.add_field(
-                name="📝 日報",
-                value=f"今日の提出率: {stats['daily_report_rate']:.1f}%\n"
-                      f"今月の平均提出率: {stats['monthly_report_rate']:.1f}%",
-                inline=True
-            )
-            
-            # タスク統計
-            embed.add_field(
-                name="📋 タスク",
-                value=f"総タスク数: {stats['total_tasks']}件\n"
-                      f"未完了タスク: {stats['pending_tasks']}件\n"
-                      f"期限超過: {stats['overdue_tasks']}件",
-                inline=True
-            )
-            
-            # 出勤統計
-            embed.add_field(
-                name="🕐 出勤",
-                value=f"今日の出勤者: {stats['today_attendance']}名\n"
-                      f"現在在席中: {stats['current_present']}名",
-                inline=True
-            )
-            
-            # システム情報
-            embed.add_field(
-                name="⚙️ システム",
-                value=f"Bot稼働時間: {stats['uptime']}\n"
-                      f"DB接続: {'🟢 正常' if stats['db_healthy'] else '🔴 異常'}",
-                inline=True
-            )
-            
-            embed.set_footer(text="企業用Discord Bot - 管理者統計")
             await ctx.send(embed=embed)
             
         except Exception as e:
@@ -111,159 +85,110 @@ class AdminCog(commands.Cog):
             await ctx.send("統計情報の取得中にエラーが発生しました。")
     
     @admin_group.command(name='users', aliases=['ユーザー'])
-    async def show_users(self, ctx):
+    async def show_users(self, ctx: commands.Context[commands.Bot]) -> None:
         """ユーザー一覧を表示"""
         try:
+            if db_manager is None:
+                await ctx.send("データベースに接続できません。")
+                return
+                
             with db_manager.get_connection() as conn:
                 cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT discord_id, username, display_name, created_at, is_admin
-                    FROM users 
-                    ORDER BY created_at DESC
-                ''')
-                users = [dict(row) for row in cursor.fetchall()]
+                cursor.execute("""
+                    SELECT discord_id, username, display_name, is_admin, created_at
+                    FROM users ORDER BY created_at DESC
+                """)
+                users = cursor.fetchall()
             
             if not users:
                 await ctx.send("登録されているユーザーがいません。")
-                return
-            
+                return            
             embed = discord.Embed(
-                title="👥 登録ユーザー一覧",
-                color=discord.Color.blue(),
+                title="👥 ユーザー一覧",
+                color=discord.Color.green(),
                 timestamp=datetime.now()
             )
             
-            # ページネーション対応（最大20名まで表示）
-            users_to_show = users[:20]
-            
-            user_list = []
-            for i, user in enumerate(users_to_show, 1):
-                admin_mark = " 👑" if user['is_admin'] else ""
-                created_date = datetime.fromisoformat(user['created_at']).strftime('%Y-%m-%d')
-                display_name = user['display_name'] or user['username']
-                
+            user_list: List[str] = []
+            for i, user in enumerate(users, 1):
+                _, _, display_name, is_admin, created_at = user
+                admin_mark = " [管理者]" if is_admin else ""
+                created_date = created_at.strftime("%Y-%m-%d") if created_at else "不明"
                 user_list.append(f"{i}. {display_name}{admin_mark} (登録: {created_date})")
             
             embed.description = '\n'.join(user_list)
-            
-            if len(users) > 20:
-                embed.add_field(
-                    name="注意",
-                    value=f"他 {len(users) - 20} 名のユーザーがいます",
-                    inline=False
-                )
-            
-            embed.set_footer(text=f"総ユーザー数: {len(users)}名")
             await ctx.send(embed=embed)
             
         except Exception as e:
             logger.error(f"ユーザー一覧取得エラー: {e}")
             await ctx.send("ユーザー一覧の取得中にエラーが発生しました。")
     
-    # 日報関連コマンドを一時的にコメントアウト
-    # @admin_group.command(name='report', aliases=['日報'])
-    # async def show_report_stats(self, ctx, days: int = 7):
-    #     """日報提出率レポート"""
-    #     try:
-    #         report_stats = await self._get_report_statistics(days)
-    #         
-    #         embed = discord.Embed(
-    #             title=f"📝 日報提出率レポート（過去{days}日間）",
-    #             color=discord.Color.green(),
-    #             timestamp=datetime.now()
-    #         )
-    #         
-    #         # 日別提出率
-    #         daily_rates = []
-    #         for day_stat in report_stats['daily_stats']:
-    #             date_str = day_stat['date']
-    #             rate = day_stat['submission_rate']
-    #             rate_emoji = "🟢" if rate >= 80 else "🟡" if rate >= 60 else "🔴"
-    #             daily_rates.append(f"{date_str}: {rate_emoji} {rate:.1f}%")
-    #         
-    #         embed.add_field(
-    #             name="日別提出率",
-    #             value='\n'.join(daily_rates[-7:]),  # 最新7日分
-    #             inline=False
-    #         )
-    #         
-    #         # 全体統計
-    #         embed.add_field(
-    #             name="期間統計",
-    #             value=f"平均提出率: {report_stats['average_rate']:.1f}%\n"
-    #                   f"最高提出率: {report_stats['max_rate']:.1f}%\n"
-    #                   f"最低提出率: {report_stats['min_rate']:.1f}%",
-    #             inline=True
-    #         )
-    #         
-    #         # 未提出が多いユーザー
-    #         if report_stats['low_submission_users']:
-    #             user_list = []
-    #             for user_stat in report_stats['low_submission_users'][:5]:
-    #                 user_list.append(f"{user_stat['username']}: {user_stat['submission_rate']:.1f}%")
-    #             
-    #             embed.add_field(
-    #                 name="提出率が低いユーザー（TOP5）",
-    #                 value='\n'.join(user_list),
-    #                 inline=True
-    #             )
-    #         
-    #         await ctx.send(embed=embed)
-    #         
-    #     except Exception as e:
-    #         logger.error(f"日報統計取得エラー: {e}")
-    #         await ctx.send("日報統計の取得中にエラーが発生しました。")
-    
     @admin_group.command(name='tasks', aliases=['タスク'])
-    async def show_task_stats(self, ctx):
-        """全タスク統計を表示"""
+    async def show_task_stats(self, ctx: commands.Context[commands.Bot]) -> None:
+        """タスク統計を表示"""
         try:
-            task_stats = await self._get_task_statistics()
+            if db_manager is None:
+                await ctx.send("データベースに接続できません。")
+                return
+                
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                # ステータス別統計
+                cursor.execute("""
+                    SELECT status, COUNT(*) FROM tasks GROUP BY status
+                """)
+                status_stats = cursor.fetchall()
+                
+                # 優先度別統計
+                cursor.execute("""
+                    SELECT priority, COUNT(*) FROM tasks GROUP BY priority
+                """)
+                priority_data = cursor.fetchall()
+                
+                # ユーザー別統計（上位5名）
+                cursor.execute("""
+                    SELECT u.username, COUNT(t.id) as task_count
+                    FROM users u LEFT JOIN tasks t ON u.id = t.user_id
+                    GROUP BY u.id, u.username
+                    ORDER BY task_count DESC LIMIT 5
+                """)
+                user_stats = cursor.fetchall()
             
             embed = discord.Embed(
-                title="📋 タスク統計情報",
-                color=discord.Color.purple(),
+                title="📋 タスク統計",
+                color=discord.Color.orange(),
                 timestamp=datetime.now()
             )
             
-            # 全体統計
+            # ステータス別
+            status_text = '\n'.join([f"{status}: {count}件" 
+                                   for status, count in status_stats])
             embed.add_field(
-                name="全体統計",
-                value=f"総タスク数: {task_stats['total_tasks']}件\n"
-                      f"完了タスク: {task_stats['completed_tasks']}件\n"
-                      f"未完了タスク: {task_stats['pending_tasks']}件",
+                name="ステータス別",
+                value=status_text if status_text else "データなし",
                 inline=True
             )
             
-            # 優先度別統計
-            priority_stats = []
-            for priority in ['高', '中', '低']:
-                count = task_stats['by_priority'].get(priority, 0)
+            # 優先度別
+            priority_stats: List[str] = []
+            for priority, count in priority_data:
                 priority_stats.append(f"{priority}: {count}件")
             
             embed.add_field(
-                name="優先度別（未完了）",
-                value='\n'.join(priority_stats),
+                name="優先度別",
+                value='\n'.join(priority_stats) if priority_stats else "データなし",
                 inline=True
             )
             
-            # 期限統計
-            embed.add_field(
-                name="期限統計",
-                value=f"期限超過: {task_stats['overdue_tasks']}件\n"
-                      f"今日期限: {task_stats['due_today']}件\n"
-                      f"明日期限: {task_stats['due_tomorrow']}件",
-                inline=True
-            )
-            
-            # アクティブユーザー
-            if task_stats['active_users']:
-                user_list = []
-                for user_stat in task_stats['active_users'][:5]:
-                    user_list.append(f"{user_stat['username']}: {user_stat['task_count']}件")
+            # ユーザー別（上位5名）
+            if user_stats:
+                user_list: List[str] = []
+                for user_stat in user_stats:
+                    user_list.append(f"{user_stat[0]}: {user_stat[1]}件")
                 
                 embed.add_field(
-                    name="タスクが多いユーザー（TOP5）",
+                    name="ユーザー別タスク数（上位5名）",
                     value='\n'.join(user_list),
                     inline=False
                 )
@@ -275,48 +200,55 @@ class AdminCog(commands.Cog):
             await ctx.send("タスク統計の取得中にエラーが発生しました。")
     
     @admin_group.command(name='attendance', aliases=['出勤'])
-    async def show_attendance_stats(self, ctx, days: int = 7):
+    async def show_attendance_stats(self, ctx: commands.Context[commands.Bot], days: int = 7) -> None:
         """出勤統計を表示"""
         try:
-            attendance_stats = await self._get_attendance_statistics(days)
+            if db_manager is None:
+                await ctx.send("データベースに接続できません。")
+                return
+                
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                # 日別出勤率
+                cursor.execute(f"""
+                    SELECT DATE(check_in_time) as date,
+                           COUNT(DISTINCT user_id) as attendance_count
+                    FROM attendance_records
+                    WHERE check_in_time >= date('now', '-{days} days')
+                    GROUP BY DATE(check_in_time)
+                    ORDER BY date DESC
+                """)
+                daily_attendance = cursor.fetchall()
+                  # 総ユーザー数
+                cursor.execute("SELECT COUNT(*) FROM users")
+                result = cursor.fetchone()
+                total_users = result[0] if result else 0
             
             embed = discord.Embed(
-                title=f"🕐 出勤統計（過去{days}日間）",
-                color=discord.Color.orange(),
+                title=f"📅 出勤統計（過去{days}日間）",
+                color=discord.Color.purple(),
                 timestamp=datetime.now()
             )
             
-            # 日別出勤率
-            daily_rates = []
-            for day_stat in attendance_stats['daily_stats']:
-                date_str = day_stat['date']
-                rate = day_stat['attendance_rate']
-                rate_emoji = "🟢" if rate >= 80 else "🟡" if rate >= 60 else "🔴"
-                daily_rates.append(f"{date_str}: {rate_emoji} {rate:.1f}%")
-            
-            embed.add_field(
-                name="日別出勤率",
-                value='\n'.join(daily_rates[-7:]),
-                inline=False
-            )
-            
-            # 現在の在席状況
-            current_status = attendance_stats['current_status']
-            embed.add_field(
-                name="現在の状況",
-                value=f"在席: {current_status['present']}名\n"
-                      f"休憩中: {current_status['break']}名\n"
-                      f"退勤: {current_status['left']}名",
-                inline=True
-            )
-            
-            # 平均勤務時間
-            embed.add_field(
-                name="勤務時間統計",
-                value=f"平均勤務時間: {attendance_stats['avg_work_hours']:.1f}時間\n"
-                      f"平均残業時間: {attendance_stats['avg_overtime']:.1f}時間",
-                inline=True
-            )
+            if daily_attendance and total_users > 0:
+                daily_rates: List[str] = []
+                for date_str, count in daily_attendance:
+                    rate = (count / total_users) * 100 if total_users > 0 else 0
+                    rate_emoji = "🟢" if rate >= 80 else "🟡" if rate >= 50 else "🔴"
+                    daily_rates.append(f"{date_str}: {rate_emoji} {rate:.1f}%")
+                
+                embed.add_field(
+                    name="日別出勤率",
+                    value='\n'.join(daily_rates[-7:]) if daily_rates else "データなし",
+                    inline=False
+                )
+            else:
+                embed.add_field(
+                    name="出勤データ",
+                    value="データが不足しています",
+                    inline=False
+                )
             
             await ctx.send(embed=embed)
             
@@ -325,189 +257,143 @@ class AdminCog(commands.Cog):
             await ctx.send("出勤統計の取得中にエラーが発生しました。")
     
     @admin_group.command(name='backup', aliases=['バックアップ'])
-    async def create_backup(self, ctx):
+    async def create_backup(self, ctx: commands.Context[commands.Bot]) -> None:
         """データベースバックアップを作成"""
         try:
-            # バックアップファイル名を生成
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            backup_filename = f"backup_discord_bot_{timestamp}.db"
-            
-            # データベースファイルをコピー
-            import shutil
-            shutil.copy2(db_manager.db_path, backup_filename)
-            
-            embed = discord.Embed(
-                title="💾 バックアップ完了",
-                description=f"データベースのバックアップを作成しました",
-                color=discord.Color.green(),
-                timestamp=datetime.now()
-            )
-            
-            embed.add_field(
-                name="ファイル名",
-                value=backup_filename,
-                inline=True
-            )
-            
-            # ファイルサイズを取得
-            file_size = os.path.getsize(backup_filename)
-            embed.add_field(
-                name="ファイルサイズ",
-                value=f"{file_size / 1024:.1f} KB",
-                inline=True
-            )
-            
-            await ctx.send(embed=embed)
-            logger.info(f"データベースバックアップを作成: {backup_filename}")
+            if db_manager is None:
+                await ctx.send("データベースに接続できません。")
+                return
+                
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            backup_filename = f"backup_{timestamp}.db"
+              # SQLiteの場合のみバックアップ実行
+            try:
+                if hasattr(db_manager, 'db_path'):
+                    db_path = getattr(db_manager, 'db_path', None)
+                    if db_path:
+                        shutil.copy2(db_path, backup_filename)
+                        
+                        embed = discord.Embed(
+                            title="💾 バックアップ完了",
+                            description=f"バックアップファイル: {backup_filename}",
+                            color=discord.Color.green(),
+                            timestamp=datetime.now()
+                        )
+                    else:
+                        embed = discord.Embed(
+                            title="❌ バックアップエラー",
+                            description="データベースパスが見つかりません",
+                            color=discord.Color.red()
+                        )
+                else:
+                    embed = discord.Embed(
+                        title="❌ バックアップエラー",
+                        description="PostgreSQLのバックアップは手動で実行してください",
+                        color=discord.Color.red()
+                    )
+            except Exception as backup_error:
+                logger.error(f"バックアップ実行エラー: {backup_error}")
+                embed = discord.Embed(
+                    title="❌ バックアップエラー",
+                    description="バックアップファイルの作成に失敗しました",
+                    color=discord.Color.red()
+                )
             
         except Exception as e:
             logger.error(f"バックアップ作成エラー: {e}")
-            await ctx.send("バックアップの作成中にエラーが発生しました。")
+            embed = discord.Embed(
+                title="❌ バックアップエラー",
+                description="バックアップの作成中にエラーが発生しました",
+                color=discord.Color.red()
+            )
+        
+        await ctx.send(embed=embed)
     
     @admin_group.command(name='settings', aliases=['設定'])
-    async def show_settings(self, ctx):
+    async def show_settings(self, ctx: commands.Context[commands.Bot]) -> None:
         """Bot設定を表示"""
-        from config import Config
-        
         embed = discord.Embed(
-            title="⚙️ Bot設定情報",
+            title="⚙️ Bot設定",
             color=discord.Color.blue(),
             timestamp=datetime.now()
         )
         
-        # 基本設定
-        embed.add_field(
-            name="基本設定",
-            value=f"Guild ID: {Config.DISCORD_GUILD_ID}\n"
-                  f"データベース: {Config.DATABASE_URL}\n"
-                  f"タイムゾーン: {Config.TIMEZONE}",
-            inline=False
-        )
+        settings = {
+            "データベース": "PostgreSQL" if os.getenv('DATABASE_URL') else "SQLite",
+            "環境": "本番" if os.getenv('ENVIRONMENT') == 'production' else "開発",
+            "ログレベル": os.getenv('LOG_LEVEL', 'INFO'),
+            "Discord Guild ID": os.getenv('DISCORD_GUILD_ID', '未設定'),
+        }
         
-        # リマインド設定
-        embed.add_field(
-            name="リマインド設定",
-            value=f"日報時刻: {Config.DAILY_REPORT_TIME}\n"
-                  f"会議リマインド: {Config.MEETING_REMINDER_MINUTES}分前",
-            inline=True
-        )
-        
-        # API設定
-        api_status = "🟢 設定済み" if Config.GOOGLE_CLIENT_ID else "🔴 未設定"
-        embed.add_field(
-            name="外部API",
-            value=f"Google Calendar: {api_status}",
-            inline=True
-        )
-        
-        # ログ設定
-        embed.add_field(
-            name="ログ設定",
-            value=f"ログレベル: {Config.LOG_LEVEL}",
-            inline=True
-        )
+        for key, value in settings.items():
+            embed.add_field(name=key, value=value, inline=True)
         
         await ctx.send(embed=embed)
     
-    async def _collect_statistics(self) -> Dict[str, Any]:
-        """全体統計情報を収集"""
-        stats = {}
+    def _get_system_stats(self) -> Dict[str, Any]:
+        """システム統計を取得"""
+        stats: Dict[str, Any] = {
+            'total_users': 0,
+            'total_tasks': 0,
+            'pending_tasks': 0,
+            'overdue_tasks': 0,
+            'today_attendance': 0,
+            'current_present': 0,
+            'uptime': "計算中"
+        }
         
         try:
+            if db_manager is None:
+                return stats
+                
             with db_manager.get_connection() as conn:
                 cursor = conn.cursor()
                 
-                # ユーザー統計
-                cursor.execute('SELECT COUNT(*) FROM users')
-                stats['total_users'] = cursor.fetchone()[0]
+                # 各統計を取得
+                cursor.execute("SELECT COUNT(*) FROM users")
+                result = cursor.fetchone()
+                if result:
+                    stats['total_users'] = result[0]
                 
-                # 日報関連統計を一時的にコメントアウト
-                today = date.today().isoformat()
-                # cursor.execute('SELECT COUNT(DISTINCT user_id) FROM daily_reports WHERE report_date = ?', (today,))
-                # stats['daily_active_users'] = cursor.fetchone()[0]
-                stats['daily_active_users'] = 0  # 一時的に0に設定
-                
-                # cursor.execute('SELECT COUNT(*) FROM daily_reports WHERE report_date = ?', (today,))
-                # today_reports = cursor.fetchone()[0]
-                # stats['daily_report_rate'] = (today_reports / max(stats['total_users'], 1)) * 100
-                stats['daily_report_rate'] = 0  # 一時的に0に設定
-                
-                # first_day_of_month = date.today().replace(day=1).isoformat()
-                # cursor.execute('''
-                #     SELECT COUNT(*) FROM daily_reports 
-                #     WHERE report_date >= ?
-                # ''', (first_day_of_month,))
-                # monthly_reports = cursor.fetchone()[0]
-                # days_in_month = (date.today() - date.today().replace(day=1)).days + 1
-                # expected_reports = stats['total_users'] * days_in_month
-                # stats['monthly_report_rate'] = (monthly_reports / max(expected_reports, 1)) * 100
-                stats['monthly_report_rate'] = 0  # 一時的に0に設定
-                
-                # タスク統計
-                cursor.execute('SELECT COUNT(*) FROM tasks')
-                stats['total_tasks'] = cursor.fetchone()[0]
+                cursor.execute("SELECT COUNT(*) FROM tasks")
+                result = cursor.fetchone()
+                if result:
+                    stats['total_tasks'] = result[0]
                 
                 cursor.execute("SELECT COUNT(*) FROM tasks WHERE status != '完了'")
-                stats['pending_tasks'] = cursor.fetchone()[0]
+                result = cursor.fetchone()
+                if result:
+                    stats['pending_tasks'] = result[0]
                 
-                cursor.execute("SELECT COUNT(*) FROM tasks WHERE due_date < ? AND status != '完了'", (today,))
-                stats['overdue_tasks'] = cursor.fetchone()[0]
+                cursor.execute("""
+                    SELECT COUNT(*) FROM tasks 
+                    WHERE due_date < date('now') AND status != '完了'
+                """)
+                result = cursor.fetchone()
+                if result:
+                    stats['overdue_tasks'] = result[0]
                 
-                # 出勤統計
-                cursor.execute('SELECT COUNT(*) FROM attendance WHERE work_date = ? AND clock_in_time IS NOT NULL', (today,))
-                stats['today_attendance'] = cursor.fetchone()[0]
+                cursor.execute("""
+                    SELECT COUNT(DISTINCT user_id) FROM attendance_records 
+                    WHERE DATE(check_in_time) = DATE('now')
+                """)
+                result = cursor.fetchone()
+                if result:
+                    stats['today_attendance'] = result[0]
                 
-                cursor.execute("SELECT COUNT(*) FROM attendance WHERE work_date = ? AND status = '在席'", (today,))
-                stats['current_present'] = cursor.fetchone()[0]
+                cursor.execute("""
+                    SELECT COUNT(*) FROM attendance_records 
+                    WHERE DATE(check_in_time) = DATE('now') AND check_out_time IS NULL
+                """)
+                result = cursor.fetchone()
+                if result:
+                    stats['current_present'] = result[0]
         
         except Exception as e:
-            logger.error(f"統計収集エラー: {e}")
-            stats = {key: 0 for key in ['total_users', 'daily_active_users', 'daily_report_rate', 
-                                       'monthly_report_rate', 'total_tasks', 'pending_tasks', 
-                                       'overdue_tasks', 'today_attendance', 'current_present']}
-        
-        # システム情報
-        stats['uptime'] = "計算中"  # 実際の実装では起動時間から計算
-        stats['db_healthy'] = True  # 簡易チェック
+            logger.error(f"統計取得エラー: {e}")
         
         return stats
-    
-    # 日報統計関数を一時的にコメントアウト
-    # async def _get_report_statistics(self, days: int) -> Dict[str, Any]:
-    #     """日報統計を取得"""
-    #     # 実装を簡略化（実際にはより詳細な統計を計算）
-    #     return {
-    #         'daily_stats': [],
-    #         'average_rate': 75.0,
-    #         'max_rate': 100.0,
-    #         'min_rate': 50.0,
-    #         'low_submission_users': []
-    #     }
-    
-    async def _get_task_statistics(self) -> Dict[str, Any]:
-        """タスク統計を取得"""
-        # 実装を簡略化
-        return {
-            'total_tasks': 0,
-            'completed_tasks': 0,
-            'pending_tasks': 0,
-            'by_priority': {'高': 0, '中': 0, '低': 0},
-            'overdue_tasks': 0,
-            'due_today': 0,
-            'due_tomorrow': 0,
-            'active_users': []
-        }
-    
-    async def _get_attendance_statistics(self, days: int) -> Dict[str, Any]:
-        """出勤統計を取得"""
-        # 実装を簡略化
-        return {
-            'daily_stats': [],
-            'current_status': {'present': 0, 'break': 0, 'left': 0},
-            'avg_work_hours': 8.0,
-            'avg_overtime': 1.0
-        }
 
-async def setup(bot):
+async def setup(bot: commands.Bot) -> None:
     """Cogをbotに追加"""
-    await bot.add_cog(AdminCog(bot)) 
+    await bot.add_cog(AdminCog(bot))

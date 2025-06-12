@@ -1,1 +1,1 @@
-# Utils package 
+# bot.utils パッケージの初期化ファイル 

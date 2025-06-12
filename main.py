@@ -1,37 +1,28 @@
+"""
+企業用Discord Bot - メインアプリケーション
+リファクタリング版 v2.0.0
+"""
 import discord
 from discord.ext import commands
-import logging
 import asyncio
-import os
+import sys
+from pathlib import Path
+
+# アプリケーション設定とコアモジュール
 from config import Config
+from core.database import db_manager, DB_TYPE
+from core.logging import LoggerManager
+from core.health_check import health_server
 
-# データベースの動的選択（Supabase対応）
-if os.getenv('DATABASE_URL') and 'postgres' in os.getenv('DATABASE_URL'):
-    try:
-        from database_postgres import db_manager
-        DB_TYPE = "PostgreSQL"
-    except ImportError:
-        from database import db_manager
-        DB_TYPE = "SQLite (PostgreSQL libraries not found)"
-else:
-    from database import db_manager
-    DB_TYPE = "SQLite"
+# ログの初期化
+logger = LoggerManager.get_logger(__name__)
 
-# ログ設定
-logging.basicConfig(
-    level=getattr(logging, Config.LOG_LEVEL),
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('bot.log', encoding='utf-8'),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger(__name__)
 
 class CompanyBot(commands.Bot):
     """企業用Discord Bot"""
     
     def __init__(self):
+        """Botの初期化"""
         # Botインテントの設定
         intents = discord.Intents.default()
         intents.message_content = True
@@ -42,6 +33,14 @@ class CompanyBot(commands.Bot):
             intents=intents,
             description='企業用ワークフロー支援Bot'
         )
+        
+        self.initial_extensions = [
+            'bot.commands.task_manager',
+            'bot.commands.attendance', 
+            'bot.commands.calendar',
+            'bot.commands.admin',
+            'bot.commands.help'
+        ]
     
     async def on_ready(self):
         """Bot起動時の処理"""
@@ -51,21 +50,33 @@ class CompanyBot(commands.Bot):
         logger.info(f'データベース: {DB_TYPE}')
         
         # データベースの初期化
+        await self._initialize_database()
+        
+        # Botステータスの設定
+        await self._set_bot_presence()
+        
+        logger.info("Bot が正常に起動しました")
+    
+    async def _initialize_database(self):
+        """データベースの初期化"""
         try:
             db_manager.initialize_database()
             logger.info("データベースの初期化が完了しました")
         except Exception as e:
             logger.error(f"データベース初期化エラー: {e}")
-        
-        # ステータスの設定
-        await self.change_presence(
-            activity=discord.Activity(
-                type=discord.ActivityType.watching,
-                name="企業のワークフローを支援中..."
+            raise
+    
+    async def _set_bot_presence(self):
+        """Botのプレゼンスを設定"""
+        try:
+            await self.change_presence(
+                activity=discord.Activity(
+                    type=discord.ActivityType.watching,
+                    name="企業のワークフローを支援中..."
+                )
             )
-        )
-        
-        logger.info("Bot が正常に起動しました")
+        except Exception as e:
+            logger.warning(f"プレゼンス設定に失敗: {e}")
     
     async def on_message(self, message):
         """メッセージ受信時の処理"""
@@ -84,60 +95,30 @@ class CompanyBot(commands.Bot):
             await ctx.send(f"必要な引数が不足しています: {error.param}")
         elif isinstance(error, commands.BadArgument):
             await ctx.send("引数の形式が正しくありません。")
+        elif isinstance(error, commands.CommandOnCooldown):
+            await ctx.send(f"コマンドはクールダウン中です。{error.retry_after:.2f}秒後に再試行してください。")
         else:
-            logger.error(f"コマンドエラー: {error}")
+            logger.error(f"コマンドエラー: {error}", exc_info=True)
             await ctx.send("コマンドの実行中にエラーが発生しました。")
     
     async def setup_hook(self):
         """Bot起動時の初期化処理"""
-        logger.info("初期化処理を開始します...")
+        logger.info("拡張機能の読み込みを開始します...")
         
-        # コマンドCogをロードする
-        # 日報機能を一時的にコメントアウト
-        # try:
-        #     await self.load_extension('bot.commands.daily_report')
-        #     logger.info("日報機能をロードしました")
-        # except Exception as e:
-        #     logger.error(f"日報機能のロードに失敗: {e}")
-        
-        try:
-            await self.load_extension('bot.commands.task_manager')
-            logger.info("タスク管理機能をロードしました")
-        except Exception as e:
-            logger.error(f"タスク管理機能のロードに失敗: {e}")
-        
-        try:
-            await self.load_extension('bot.commands.attendance')
-            logger.info("出退勤管理機能をロードしました")
-        except Exception as e:
-            logger.error(f"出退勤管理機能のロードに失敗: {e}")
-        
-        # リマインド機能を一時的にコメントアウト（日報関連のため）
-        # try:
-        #     await self.load_extension('bot.utils.reminder')
-        #     logger.info("リマインド機能をロードしました")
-        # except Exception as e:
-        #     logger.error(f"リマインド機能のロードに失敗: {e}")
-        
-        try:
-            await self.load_extension('bot.commands.calendar')
-            logger.info("カレンダー機能をロードしました")
-        except Exception as e:
-            logger.error(f"カレンダー機能のロードに失敗: {e}")
-        
-        try:
-            await self.load_extension('bot.commands.admin')
-            logger.info("管理者機能をロードしました")
-        except Exception as e:
-            logger.error(f"管理者機能のロードに失敗: {e}")
-        
-        try:
-            await self.load_extension('bot.commands.help')
-            logger.info("ヘルプ機能をロードしました")
-        except Exception as e:
-            logger.error(f"ヘルプ機能のロードに失敗: {e}")
+        # 拡張機能の読み込み
+        await self._load_extensions()
         
         logger.info("初期化処理が完了しました")
+    
+    async def _load_extensions(self):
+        """拡張機能を読み込む"""
+        for extension in self.initial_extensions:
+            try:
+                await self.load_extension(extension)
+                logger.info(f"拡張機能をロードしました: {extension}")
+            except Exception as e:
+                logger.error(f"拡張機能のロードに失敗: {extension} - {e}")
+
 
 # 基本的なコマンドを追加
 @commands.command(name='ping')
@@ -151,6 +132,7 @@ async def ping(ctx):
     )
     await ctx.send(embed=embed)
 
+
 @commands.command(name='info')
 async def info(ctx):
     """Bot の情報を表示"""
@@ -161,7 +143,7 @@ async def info(ctx):
     )
     embed.add_field(
         name="主な機能",
-        value="• 日報リマインド\n• タスク管理\n• カレンダー連携",
+        value="• タスク管理\n• 出退勤管理\n• カレンダー連携\n• 管理機能",
         inline=False
     )
     embed.add_field(
@@ -171,10 +153,16 @@ async def info(ctx):
     )
     embed.add_field(
         name="バージョン",
-        value="1.0.0",
+        value="2.0.0",
+        inline=True
+    )
+    embed.add_field(
+        name="環境",
+        value=Config.ENVIRONMENT,
         inline=True
     )
     await ctx.send(embed=embed)
+
 
 async def main():
     """メイン実行関数"""
@@ -182,28 +170,13 @@ async def main():
         # 設定の妥当性チェック
         Config.validate_config()
         
-        # ヘルスチェック用サーバーの起動（Koyeb用）
+        # 環境情報の表示
+        env_info = Config.get_environment_info()
+        logger.info(f"環境情報: {env_info}")
+        
+        # 本番環境でヘルスチェックサーバーを起動
         if Config.ENVIRONMENT == "production":
-            from flask import Flask
-            import threading
-            
-            health_app = Flask(__name__)
-            
-            @health_app.route('/health')
-            def health_check():
-                return {'status': 'healthy', 'service': 'discord-bot', 'version': '1.0.0'}, 200
-            
-            @health_app.route('/')
-            def root():
-                return {'message': 'Discord Bot Enterprise is running', 'status': 'online'}, 200
-            
-            def run_health_server():
-                health_app.run(host='0.0.0.0', port=8000, debug=False)
-            
-            # ヘルスチェックサーバーを別スレッドで起動
-            health_thread = threading.Thread(target=run_health_server, daemon=True)
-            health_thread.start()
-            logger.info("ヘルスチェックサーバーがポート8000で起動しました")
+            health_server.start()
         
         # Botインスタンスの作成
         bot = CompanyBot()
@@ -217,13 +190,30 @@ async def main():
         await bot.start(Config.DISCORD_TOKEN)
         
     except Exception as e:
-        logger.error(f"Bot の起動に失敗しました: {e}")
+        logger.error(f"Bot の起動に失敗しました: {e}", exc_info=True)
         raise
+
+
+def setup_signal_handlers():
+    """シグナルハンドラーの設定"""
+    import signal
+    
+    def signal_handler(signum, frame):
+        logger.info("シャットダウンシグナルを受信しました")
+        if health_server.is_running:
+            health_server.stop()
+        sys.exit(0)
+    
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+
 
 if __name__ == "__main__":
     try:
+        setup_signal_handlers()
         asyncio.run(main())
     except KeyboardInterrupt:
         logger.info("Bot を停止しました")
     except Exception as e:
-        logger.error(f"予期しないエラーが発生しました: {e}") 
+        logger.error(f"予期しないエラーが発生しました: {e}", exc_info=True)
+        sys.exit(1)
