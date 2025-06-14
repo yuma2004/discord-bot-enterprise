@@ -18,7 +18,8 @@
       "Bash(true)",
       "Bash(touch:*)",
       "Bash(python -m pytest tests/unit/test_database.py -v)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(cp:*)"
     ],
     "deny": []
   }

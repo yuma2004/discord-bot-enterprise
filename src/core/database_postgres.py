@@ -202,16 +202,16 @@ class PostgreSQLManager:
                 CREATE TABLE IF NOT EXISTS attendance (
                     id SERIAL PRIMARY KEY,
                     user_id BIGINT NOT NULL,
-                    check_in TIMESTAMP NOT NULL,
+                    check_in TIMESTAMP,
                     check_out TIMESTAMP,
                     break_start TIMESTAMP,
                     break_end TIMESTAMP,
                     work_hours DECIMAL(4,2) DEFAULT 0.0,
                     overtime_hours DECIMAL(4,2) DEFAULT 0.0,
-                    date DATE NOT NULL,
+                    work_date DATE NOT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users (discord_id),
-                    UNIQUE(user_id, date)
+                    UNIQUE(user_id, work_date)
                 );
                 
                 -- Settings table
@@ -227,7 +227,7 @@ class PostgreSQLManager:
                 CREATE INDEX IF NOT EXISTS idx_tasks_user_id ON tasks(user_id);
                 CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
                 CREATE INDEX IF NOT EXISTS idx_attendance_user_id ON attendance(user_id);
-                CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance(date);
+                CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance(work_date);
             """,
             
             2: """
