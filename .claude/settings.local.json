@@ -19,7 +19,8 @@
       "Bash(touch:*)",
       "Bash(python -m pytest tests/unit/test_database.py -v)",
       "Bash(chmod:*)",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(python -m pytest tests/unit/test_database.py::TestTaskOperations::test_create_task -v)"
     ],
     "deny": []
   }

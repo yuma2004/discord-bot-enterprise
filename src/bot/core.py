@@ -7,6 +7,7 @@ from discord.ext import commands
 from typing import Optional, List
 import sys
 from datetime import datetime
+from functools import wraps
 
 from src.core.config import get_config
 from src.core.database import get_database_manager
@@ -155,10 +156,11 @@ class DiscordBot(commands.Bot):
     async def _load_extensions(self):
         """Load bot extensions/cogs."""
         extensions = [
-            "src.bot.commands.tasks",
+            "src.bot.commands.task_manager",
             "src.bot.commands.attendance", 
             "src.bot.commands.admin",
-            "src.bot.commands.help"
+            "src.bot.commands.help",
+            "src.bot.commands.calendar"
         ]
         
         for extension in extensions:
@@ -166,8 +168,9 @@ class DiscordBot(commands.Bot):
                 await self.load_extension(extension)
                 self.logger.info(f"Loaded extension: {extension}")
             except Exception as e:
-                self.logger.error(f"Failed to load extension {extension}: {e}")
-                # Continue loading other extensions
+                self.logger.warning(f"Failed to load extension {extension}: {e}")
+                self.logger.info("Continuing with other extensions...")
+                # Continue loading other extensions despite failures
     
     def _add_builtin_commands(self):
         """Add built-in commands to the bot."""
@@ -389,6 +392,7 @@ async def ensure_user_registered(ctx: commands.Context) -> bool:
 
 def require_registration(func):
     """Decorator to ensure user is registered before command execution."""
+    @wraps(func)
     async def wrapper(self, ctx: commands.Context, *args, **kwargs):
         if await ensure_user_registered(ctx):
             return await func(self, ctx, *args, **kwargs)
@@ -400,6 +404,7 @@ def require_registration(func):
 
 def admin_only(func):
     """Decorator to restrict command to administrators."""
+    @wraps(func)
     async def wrapper(self, ctx: commands.Context, *args, **kwargs):
         try:
             db_manager = get_database_manager()

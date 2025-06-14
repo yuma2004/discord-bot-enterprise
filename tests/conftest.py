@@ -111,15 +111,31 @@ def sample_task_data() -> dict:
 @pytest.fixture
 def sample_attendance_data() -> dict:
     """Sample attendance data for testing."""
+    from datetime import datetime
     return {
         "user_id": 987654321,
-        "check_in": "2024-01-01T09:00:00+09:00",
-        "check_out": "2024-01-01T18:00:00+09:00",
-        "break_start": "2024-01-01T12:00:00+09:00",
-        "break_end": "2024-01-01T13:00:00+09:00",
+        "date": "2024-01-01",
+        "check_in": datetime(2024, 1, 1, 9, 0),
+        "check_out": datetime(2024, 1, 1, 18, 0),
+        "break_start": datetime(2024, 1, 1, 12, 0),
+        "break_end": datetime(2024, 1, 1, 13, 0),
         "work_hours": 8.0,
         "overtime_hours": 0.0
     }
+
+
+@pytest.fixture
+def mock_datetime_utils():
+    """Mock datetime utilities for testing."""
+    with patch("src.utils.datetime_utils.now_jst") as mock_now, \
+         patch("src.utils.datetime_utils.today_jst") as mock_today:
+        from datetime import datetime, date
+        mock_now.return_value = datetime(2024, 6, 15, 10, 0, 0)
+        mock_today.return_value = date(2024, 6, 15)
+        yield {
+            "now_jst": mock_now,
+            "today_jst": mock_today
+        }
 
 
 @pytest.fixture

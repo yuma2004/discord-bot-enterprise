@@ -302,6 +302,237 @@ class DatabaseManager:
             cursor = await conn.execute("SELECT * FROM users ORDER BY created_at")
             results = await cursor.fetchall()
             return [dict(row) for row in results]
+    
+    # Task operations
+    async def create_task(self, user_id: int, title: str, description: str = None, 
+                         priority: str = "medium", status: str = "pending", 
+                         due_date: Optional[datetime] = None) -> int:
+        """Create a new task."""
+        try:
+            async with self.get_connection() as conn:
+                cursor = await conn.execute("""
+                    INSERT INTO tasks (user_id, title, description, priority, status, due_date)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, (user_id, title, description, priority, status, due_date))
+                await conn.commit()
+                return cursor.lastrowid
+        except Exception as e:
+            raise DatabaseError(f"Failed to create task: {e}") from e
+    
+    async def get_task(self, task_id: int) -> Optional[Dict[str, Any]]:
+        """Get task by ID."""
+        async with self.get_connection() as conn:
+            cursor = await conn.execute(
+                "SELECT * FROM tasks WHERE id = ?",
+                (task_id,)
+            )
+            result = await cursor.fetchone()
+            return dict(result) if result else None
+    
+    async def update_task(self, task_id: int, **kwargs) -> bool:
+        """Update task information."""
+        if not kwargs:
+            return False
+        
+        # Build dynamic update query
+        set_clauses = []
+        values = []
+        
+        for key, value in kwargs.items():
+            if key in ['title', 'description', 'status', 'priority', 'due_date', 'completed_at']:
+                set_clauses.append(f"{key} = ?")
+                values.append(value)
+        
+        if not set_clauses:
+            return False
+        
+        set_clauses.append("updated_at = CURRENT_TIMESTAMP")
+        values.append(task_id)
+        
+        query = f"UPDATE tasks SET {', '.join(set_clauses)} WHERE id = ?"
+        
+        try:
+            async with self.get_connection() as conn:
+                cursor = await conn.execute(query, values)
+                await conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            raise DatabaseError(f"Failed to update task: {e}") from e
+    
+    async def delete_task(self, task_id: int) -> bool:
+        """Delete a task."""
+        try:
+            async with self.get_connection() as conn:
+                cursor = await conn.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
+                await conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            raise DatabaseError(f"Failed to delete task: {e}") from e
+    
+    async def list_tasks(self, user_id: int) -> List[Dict[str, Any]]:
+        """Get all tasks for a user."""
+        async with self.get_connection() as conn:
+            cursor = await conn.execute(
+                "SELECT * FROM tasks WHERE user_id = ? ORDER BY created_at DESC",
+                (user_id,)
+            )
+            results = await cursor.fetchall()
+            return [dict(row) for row in results]
+    
+    async def list_tasks_by_status(self, user_id: int, status: str) -> List[Dict[str, Any]]:
+        """Get tasks filtered by status."""
+        async with self.get_connection() as conn:
+            cursor = await conn.execute(
+                "SELECT * FROM tasks WHERE user_id = ? AND status = ? ORDER BY created_at DESC",
+                (user_id, status)
+            )
+            results = await cursor.fetchall()
+            return [dict(row) for row in results]
+    
+    async def complete_task(self, task_id: int) -> bool:
+        """Mark a task as completed."""
+        try:
+            async with self.get_connection() as conn:
+                cursor = await conn.execute("""
+                    UPDATE tasks 
+                    SET status = 'completed', completed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                """, (task_id,))
+                await conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            raise DatabaseError(f"Failed to complete task: {e}") from e
+    
+    # Attendance operations
+    async def create_attendance_record(self, user_id: int, date: str, check_in: datetime,
+                                     check_out: Optional[datetime] = None,
+                                     break_start: Optional[datetime] = None,
+                                     break_end: Optional[datetime] = None,
+                                     work_hours: float = 0.0,
+                                     overtime_hours: float = 0.0) -> int:
+        """Create a new attendance record."""
+        try:
+            async with self.get_connection() as conn:
+                cursor = await conn.execute("""
+                    INSERT INTO attendance (user_id, date, check_in, check_out, break_start, break_end, work_hours, overtime_hours)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, (user_id, date, check_in, check_out, break_start, break_end, work_hours, overtime_hours))
+                await conn.commit()
+                return cursor.lastrowid
+        except Exception as e:
+            raise DatabaseError(f"Failed to create attendance record: {e}") from e
+    
+    async def get_attendance_record(self, user_id: int, date: str) -> Optional[Dict[str, Any]]:
+        """Get attendance record by user ID and date."""
+        async with self.get_connection() as conn:
+            cursor = await conn.execute(
+                "SELECT * FROM attendance WHERE user_id = ? AND date = ?",
+                (user_id, date)
+            )
+            result = await cursor.fetchone()
+            return dict(result) if result else None
+    
+    async def update_attendance_record(self, user_id: int, date: str, **kwargs) -> bool:
+        """Update attendance record."""
+        if not kwargs:
+            return False
+        
+        # Build dynamic update query
+        set_clauses = []
+        values = []
+        
+        for key, value in kwargs.items():
+            if key in ['check_out', 'break_start', 'break_end', 'work_hours', 'overtime_hours']:
+                set_clauses.append(f"{key} = ?")
+                values.append(value)
+        
+        if not set_clauses:
+            return False
+        
+        values.extend([user_id, date])
+        query = f"UPDATE attendance SET {', '.join(set_clauses)} WHERE user_id = ? AND date = ?"
+        
+        try:
+            async with self.get_connection() as conn:
+                cursor = await conn.execute(query, values)
+                await conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            raise DatabaseError(f"Failed to update attendance record: {e}") from e
+    
+    async def list_attendance_records(self, user_id: int) -> List[Dict[str, Any]]:
+        """Get all attendance records for a user."""
+        async with self.get_connection() as conn:
+            cursor = await conn.execute(
+                "SELECT * FROM attendance WHERE user_id = ? ORDER BY date DESC",
+                (user_id,)
+            )
+            results = await cursor.fetchall()
+            return [dict(row) for row in results]
+    
+    async def get_attendance_by_date_range(self, user_id: int, start_date: str, end_date: str) -> List[Dict[str, Any]]:
+        """Get attendance records within date range."""
+        async with self.get_connection() as conn:
+            cursor = await conn.execute(
+                "SELECT * FROM attendance WHERE user_id = ? AND date BETWEEN ? AND ? ORDER BY date",
+                (user_id, start_date, end_date)
+            )
+            results = await cursor.fetchall()
+            return [dict(row) for row in results]
+    
+    # User preferences operations
+    async def create_user_preferences(self, user_id: int, language: str = "ja",
+                                    notification_enabled: bool = True,
+                                    daily_report_time: str = "17:00") -> bool:
+        """Create user preferences."""
+        try:
+            async with self.get_connection() as conn:
+                await conn.execute("""
+                    INSERT INTO user_preferences (user_id, language, notification_enabled, daily_report_time)
+                    VALUES (?, ?, ?, ?)
+                """, (user_id, language, notification_enabled, daily_report_time))
+                await conn.commit()
+                return True
+        except Exception as e:
+            raise DatabaseError(f"Failed to create user preferences: {e}") from e
+    
+    async def get_user_preferences(self, user_id: int) -> Optional[Dict[str, Any]]:
+        """Get user preferences by user ID."""
+        async with self.get_connection() as conn:
+            cursor = await conn.execute(
+                "SELECT * FROM user_preferences WHERE user_id = ?",
+                (user_id,)
+            )
+            result = await cursor.fetchone()
+            return dict(result) if result else None
+    
+    async def update_user_preferences(self, user_id: int, **kwargs) -> bool:
+        """Update user preferences."""
+        if not kwargs:
+            return False
+        
+        # Build dynamic update query
+        set_clauses = []
+        values = []
+        
+        for key, value in kwargs.items():
+            if key in ['language', 'notification_enabled', 'daily_report_time']:
+                set_clauses.append(f"{key} = ?")
+                values.append(value)
+        
+        if not set_clauses:
+            return False
+        
+        values.append(user_id)
+        query = f"UPDATE user_preferences SET {', '.join(set_clauses)} WHERE user_id = ?"
+        
+        try:
+            async with self.get_connection() as conn:
+                cursor = await conn.execute(query, values)
+                await conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            raise DatabaseError(f"Failed to update user preferences: {e}") from e
 
 
 # Global database manager instance
