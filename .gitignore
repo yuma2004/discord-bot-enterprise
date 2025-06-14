@@ -51,6 +51,7 @@ coverage.xml
 .env.development
 .env.test
 .env.production
+.env.memo
 .venv
 env/
 venv/
