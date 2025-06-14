@@ -1,55 +1,46 @@
+# Koyeb Deployment Configuration
 name: discord-bot-enterprise
 services:
   - name: discord-bot
-    docker:
-      dockerfile: Dockerfile
+    git:
+      repository: github.com/your-username/discord-bot-enterprise
+      branch: main
     instance_type: nano
-    regions:
-      - fra
-    scaling:
-      min: 1
-      max: 1
     env:
-      - key: DISCORD_TOKEN
-        scope: project
-        secret: discord-token
-      - key: DATABASE_URL
-        scope: project
-        secret: database-url
       - key: ENVIRONMENT
         value: production
-      - key: BOT_PREFIX
-        value: "!"
-      - key: TIMEZONE
-        value: Asia/Tokyo
-      - key: DAILY_REPORT_TIME
-        value: "17:00"
-      - key: DEBUG
-        value: "false"
+      - key: DISCORD_TOKEN
+        scope: secret
+        name: DISCORD_TOKEN
+      - key: DISCORD_GUILD_ID
+        scope: secret
+        name: DISCORD_GUILD_ID
+      - key: DATABASE_URL
+        scope: secret
+        name: DATABASE_URL
       - key: LOG_LEVEL
         value: INFO
+      - key: TIMEZONE
+        value: Asia/Tokyo
+      - key: HEALTH_CHECK_PORT
+        value: "8000"
       - key: GOOGLE_CLIENT_ID
-        scope: project
-        secret: google-client-id
+        scope: secret
+        name: GOOGLE_CLIENT_ID
       - key: GOOGLE_CLIENT_SECRET
-        scope: project
-        secret: google-client-secret
-      - key: GOOGLE_CALENDAR_ID
-        scope: project
-        secret: google-calendar-id
+        scope: secret
+        name: GOOGLE_CLIENT_SECRET
     ports:
       - port: 8000
         protocol: http
-    health_checks:
-      - http:
-          path: /health
-          port: 8000
-    checks:
-      - http:
-          path: /health
-          port: 8000
+    health_check:
+      http:
+        port: 8000
+        path: /health
+    scaling:
+      min: 1
+      max: 1
+    # Resource limits for nano instance
     resources:
-      memory: 256Mi
-      cpu: 0.1
-    restart_policy: always
-    auto_deploy: true 
+      memory: 512Mi
+      cpu: 0.1 

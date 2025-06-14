@@ -1,219 +1,165 @@
 """
-企業用Discord Bot - メインアプリケーション
-リファクタリング版 v2.0.0
+Enterprise Discord Bot - Main Application
+Clean TDD Architecture v3.0.0
 """
-import discord
-from discord.ext import commands
 import asyncio
+import signal
 import sys
 from pathlib import Path
 
-# アプリケーション設定とコアモジュール
-from config import Config
-from core.database import db_manager, DB_TYPE
-from core.logging import LoggerManager
-from core.health_check import health_server
+# Add src to path for imports
+sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-# ログの初期化
-logger = LoggerManager.get_logger(__name__)
+from src.core.config import load_config_from_env, ConfigError
+from src.core.logging import configure_logging, get_logger
+from src.core.database import set_database_manager, DatabaseManager, get_database_manager, is_postgresql_url
+from src.core.error_handling import set_error_handler, ErrorHandler
+from src.core.health_check import start_health_server, stop_health_server
+from src.bot.core import get_bot_manager
 
 
-class CompanyBot(commands.Bot):
-    """企業用Discord Bot"""
+class Application:
+    """Main application controller."""
     
     def __init__(self):
-        """Botの初期化"""
-        # Botインテントの設定
-        intents = discord.Intents.default()
-        intents.message_content = True
-        intents.members = True
-        
-        super().__init__(
-            command_prefix='!',
-            intents=intents,
-            description='企業用ワークフロー支援Bot'
-        )
-        
-        self.initial_extensions = [
-            'bot.commands.task_manager',
-            'bot.commands.attendance', 
-            'bot.commands.calendar',
-            'bot.commands.admin',
-            'bot.commands.help'
-        ]
+        self.logger = None
+        self.bot_manager = None
+        self.shutdown_event = asyncio.Event()
     
-    async def on_ready(self):
-        """Bot起動時の処理"""
-        logger.info(f'{self.user} としてログインしました')
-        logger.info(f'Bot ID: {self.user.id}')
-        logger.info(f'接続サーバー数: {len(self.guilds)}')
-        logger.info(f'データベース: {DB_TYPE}')
-        
-        # データベースの初期化
-        await self._initialize_database()
-        
-        # Botステータスの設定
-        await self._set_bot_presence()
-        
-        logger.info("Bot が正常に起動しました")
-    
-    async def _initialize_database(self):
-        """データベースの初期化"""
+    async def initialize(self):
+        """Initialize application components."""
         try:
-            db_manager.initialize_database()
-            logger.info("データベースの初期化が完了しました")
+            # Load configuration
+            config = load_config_from_env()
+            
+            # Configure logging
+            log_file = "logs/bot.log" if config.is_production() else None
+            configure_logging(config.LOG_LEVEL, log_file)
+            self.logger = get_logger(__name__)
+            
+            self.logger.info("=== Discord Bot Enterprise v3.0.0 Starting ===")
+            self.logger.info(f"Environment: {config.ENVIRONMENT}")
+            self.logger.info(f"Database: {config.get_database_type()}")
+            
+            # Initialize database (auto-detects PostgreSQL vs SQLite)
+            db_manager = get_database_manager(config.DATABASE_URL)
+            set_database_manager(db_manager)
+            
+            # Initialize error handling
+            error_handler = ErrorHandler(self.logger)
+            set_error_handler(error_handler)
+            
+            # Create bot manager
+            self.bot_manager = get_bot_manager()
+            
+            # Start health check server for production
+            if config.is_production():
+                start_health_server(config.HEALTH_CHECK_PORT)
+                self.logger.info(f"Health check server started on port {config.HEALTH_CHECK_PORT}")
+            
+            self.logger.info("Application initialized successfully")
+            
+        except ConfigError as e:
+            print(f"Configuration Error: {e}")
+            sys.exit(1)
         except Exception as e:
-            logger.error(f"データベース初期化エラー: {e}")
-            raise
+            print(f"Initialization Error: {e}")
+            sys.exit(1)
     
-    async def _set_bot_presence(self):
-        """Botのプレゼンスを設定"""
+    async def start(self):
+        """Start the application."""
         try:
-            await self.change_presence(
-                activity=discord.Activity(
-                    type=discord.ActivityType.watching,
-                    name="企業のワークフローを支援中..."
-                )
+            await self.initialize()
+            
+            # Create and start bot
+            bot = await self.bot_manager.create_bot()
+            
+            self.logger.info("Starting Discord bot...")
+            
+            # Set up signal handlers
+            self._setup_signal_handlers()
+            
+            # Start bot and wait for shutdown
+            bot_task = asyncio.create_task(self.bot_manager.start_bot())
+            shutdown_task = asyncio.create_task(self.shutdown_event.wait())
+            
+            # Wait for either bot to complete or shutdown signal
+            done, pending = await asyncio.wait(
+                [bot_task, shutdown_task],
+                return_when=asyncio.FIRST_COMPLETED
             )
+            
+            # Cancel remaining tasks
+            for task in pending:
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
+            
+            # Check if bot task failed
+            if bot_task in done:
+                try:
+                    await bot_task
+                except Exception as e:
+                    self.logger.error(f"Bot task failed: {e}")
+                    raise
+            
+        except KeyboardInterrupt:
+            self.logger.info("Received keyboard interrupt")
         except Exception as e:
-            logger.warning(f"プレゼンス設定に失敗: {e}")
+            self.logger.error(f"Application error: {e}")
+            raise
+        finally:
+            await self.shutdown()
     
-    async def on_message(self, message):
-        """メッセージ受信時の処理"""
-        # Bot自身のメッセージは無視
-        if message.author == self.user:
-            return
+    async def shutdown(self):
+        """Shutdown application gracefully."""
+        if self.logger:
+            self.logger.info("Shutting down application...")
         
-        # コマンドの処理
-        await self.process_commands(message)
-    
-    async def on_command_error(self, ctx, error):
-        """コマンドエラー時の処理"""
-        if isinstance(error, commands.CommandNotFound):
-            await ctx.send("そのコマンドは存在しません。`!help`でコマンド一覧を確認してください。")
-        elif isinstance(error, commands.MissingRequiredArgument):
-            await ctx.send(f"必要な引数が不足しています: {error.param}")
-        elif isinstance(error, commands.BadArgument):
-            await ctx.send("引数の形式が正しくありません。")
-        elif isinstance(error, commands.CommandOnCooldown):
-            await ctx.send(f"コマンドはクールダウン中です。{error.retry_after:.2f}秒後に再試行してください。")
-        else:
-            logger.error(f"コマンドエラー: {error}", exc_info=True)
-            await ctx.send("コマンドの実行中にエラーが発生しました。")
-    
-    async def setup_hook(self):
-        """Bot起動時の初期化処理"""
-        logger.info("拡張機能の読み込みを開始します...")
-        
-        # 拡張機能の読み込み
-        await self._load_extensions()
-        
-        logger.info("初期化処理が完了しました")
-    
-    async def _load_extensions(self):
-        """拡張機能を読み込む"""
-        for extension in self.initial_extensions:
+        if self.bot_manager:
             try:
-                await self.load_extension(extension)
-                logger.info(f"拡張機能をロードしました: {extension}")
+                await self.bot_manager.stop_bot()
             except Exception as e:
-                logger.error(f"拡張機能のロードに失敗: {extension} - {e}")
-
-
-# 基本的なコマンドを追加
-@commands.command(name='ping')
-async def ping(ctx):
-    """Bot の応答速度をチェック"""
-    latency = round(ctx.bot.latency * 1000)
-    embed = discord.Embed(
-        title="🏓 Pong!",
-        description=f"レイテンシ: {latency}ms",
-        color=discord.Color.green()
-    )
-    await ctx.send(embed=embed)
-
-
-@commands.command(name='info')
-async def info(ctx):
-    """Bot の情報を表示"""
-    embed = discord.Embed(
-        title="🤖 企業用ワークフロー支援Bot",
-        description="企業の生産性向上をサポートするDiscord Botです",
-        color=discord.Color.blue()
-    )
-    embed.add_field(
-        name="主な機能",
-        value="• タスク管理\n• 出退勤管理\n• カレンダー連携\n• 管理機能",
-        inline=False
-    )
-    embed.add_field(
-        name="開発者",
-        value="社内開発チーム",
-        inline=True
-    )
-    embed.add_field(
-        name="バージョン",
-        value="2.0.0",
-        inline=True
-    )
-    embed.add_field(
-        name="環境",
-        value=Config.ENVIRONMENT,
-        inline=True
-    )
-    await ctx.send(embed=embed)
+                if self.logger:
+                    self.logger.error(f"Error stopping bot: {e}")
+        
+        # Stop health check server
+        try:
+            stop_health_server()
+        except Exception as e:
+            if self.logger:
+                self.logger.error(f"Error stopping health server: {e}")
+        
+        if self.logger:
+            self.logger.info("Application shutdown complete")
+    
+    def _setup_signal_handlers(self):
+        """Setup signal handlers for graceful shutdown."""
+        def signal_handler(signum, frame):
+            if self.logger:
+                self.logger.info(f"Received signal {signum}")
+            self.shutdown_event.set()
+        
+        # Only set up signal handlers on Unix-like systems
+        if hasattr(signal, 'SIGTERM'):
+            signal.signal(signal.SIGTERM, signal_handler)
+        if hasattr(signal, 'SIGINT'):
+            signal.signal(signal.SIGINT, signal_handler)
 
 
 async def main():
-    """メイン実行関数"""
-    try:
-        # 設定の妥当性チェック
-        Config.validate_config()
-        
-        # 環境情報の表示
-        env_info = Config.get_environment_info()
-        logger.info(f"環境情報: {env_info}")
-        
-        # 本番環境でヘルスチェックサーバーを起動
-        if Config.ENVIRONMENT == "production":
-            health_server.start()
-        
-        # Botインスタンスの作成
-        bot = CompanyBot()
-        
-        # 基本コマンドの追加
-        bot.add_command(ping)
-        bot.add_command(info)
-        
-        # Bot の起動
-        logger.info("Bot を起動しています...")
-        await bot.start(Config.DISCORD_TOKEN)
-        
-    except Exception as e:
-        logger.error(f"Bot の起動に失敗しました: {e}", exc_info=True)
-        raise
-
-
-def setup_signal_handlers():
-    """シグナルハンドラーの設定"""
-    import signal
-    
-    def signal_handler(signum, frame):
-        logger.info("シャットダウンシグナルを受信しました")
-        if health_server.is_running:
-            health_server.stop()
-        sys.exit(0)
-    
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
+    """Main entry point."""
+    app = Application()
+    await app.start()
 
 
 if __name__ == "__main__":
     try:
-        setup_signal_handlers()
         asyncio.run(main())
     except KeyboardInterrupt:
-        logger.info("Bot を停止しました")
+        print("\nShutdown requested by user")
     except Exception as e:
-        logger.error(f"予期しないエラーが発生しました: {e}", exc_info=True)
+        print(f"Fatal error: {e}")
         sys.exit(1)

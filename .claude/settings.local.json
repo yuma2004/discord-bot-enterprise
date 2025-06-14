@@ -12,7 +12,13 @@
       "Bash(python -m pytest tests/test_basic.py -v)",
       "Bash(python test:*)",
       "Bash(grep:*)",
-      "Bash(rg:*)"
+      "Bash(rg:*)",
+      "Bash(mkdir:*)",
+      "Bash(mv:*)",
+      "Bash(true)",
+      "Bash(touch:*)",
+      "Bash(python -m pytest tests/unit/test_database.py -v)",
+      "Bash(chmod:*)"
     ],
     "deny": []
   }

@@ -1,0 +1,69 @@
+# Discord Bot Enterprise - Docker Compose
+version: '3.8'
+
+services:
+  # Discord Bot Application
+  discord-bot:
+    build: .
+    container_name: discord-bot-enterprise
+    restart: unless-stopped
+    environment:
+      - ENVIRONMENT=production
+      - DATABASE_URL=postgresql://discord_user:${POSTGRES_PASSWORD}@postgres:5432/discord_bot
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - DISCORD_GUILD_ID=${DISCORD_GUILD_ID}
+      - LOG_LEVEL=INFO
+      - HEALTH_CHECK_PORT=8000
+      - TIMEZONE=Asia/Tokyo
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - bot_logs:/app/logs
+    networks:
+      - bot_network
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: discord-bot-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=discord_bot
+      - POSTGRES_USER=discord_user
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U discord_user -d discord_bot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bot_network
+
+  # Redis for caching (optional)
+  redis:
+    image: redis:7-alpine
+    container_name: discord-bot-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - bot_network
+
+volumes:
+  postgres_data:
+  redis_data:
+  bot_logs:
+
+networks:
+  bot_network:
+    driver: bridge
